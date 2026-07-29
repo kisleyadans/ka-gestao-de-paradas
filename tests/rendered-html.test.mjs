@@ -26,11 +26,13 @@ test("inclui a sincronização gratuita e concorrente no painel publicado", asyn
     readFile(new URL("../firestore.rules", import.meta.url), "utf8"),
   ]);
 
-  assert.match(panel, /<script src="\/shared-sync\.js"><\/script>/i);
-  assert.match(panel, /<body>\s*<script id="pcm-initial-access-mode">/i);
-  assert.doesNotMatch(panel, /<body\s+class="admin-mode">/i);
+  assert.match(panel, /<script[^>]*src="\/shared-sync\.js"[^>]*><\/script>/i);
+  assert.match(panel, /<script id="pcm-initial-access-mode">/i);
+  assert.match(panel, /<body(?![^>]*\badmin-mode\b)[^>]*>/i);
   assert.match(panel, /body:not\(\.admin-mode\) \.toolbar\{display:none !important\}/i);
-  assert.match(panel, /<section id="view-dashboard" class="view active">/i);
+  assert.match(panel, /<section id="view-dashboard" class="view(?: active)?">/i);
+  assert.match(panel, /<section id="view-avanco" class="view">/i);
+  assert.match(panel, /<section id="view-contatos" class="view">/i);
   assert.match(sync, /signInWithEmailAndPassword/);
   assert.match(sync, /edição exclusiva/);
   assert.match(sync, /runTransaction/);

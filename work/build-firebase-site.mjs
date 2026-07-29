@@ -53,14 +53,22 @@ const onlineShell = shellSource
   .replaceAll("Arquivo offline", "Firebase online")
   .replaceAll("Dados salvos neste computador", "Atualizações compartilhadas");
 
-const html = source
+let html = source
   .replace(/<title>[\s\S]*?<\/title>/i, "<title>K.A - Gestão de Paradas</title>")
-  .replace('<script src="/shared-sync.js"></script>', '<script type="module" src="/shared-sync.js"></script>')
-  .replace("</head>", `<style id="ka-firebase-app-style">${onlineStyle}</style>\n</head>`)
-  .replace(
+  .replace('<script src="/shared-sync.js"></script>', '<script type="module" src="/shared-sync.js"></script>');
+
+if (!html.includes('src="/shared-sync.js"')) {
+  html = html.replace("</body>", '<script type="module" src="/shared-sync.js"></script>\n</body>');
+}
+if (!html.includes('id="ka-firebase-app-style"')) {
+  html = html.replace("</head>", `<style id="ka-firebase-app-style">${onlineStyle}</style>\n</head>`);
+}
+if (!html.includes('id="ka-firebase-shell"')) {
+  html = html.replace(
     "</body>",
     `<script id="ka-firebase-shell">${onlineShell.replaceAll("</script>", "<\\/script>")}</script>\n</body>`,
   );
+}
 
 await mkdir(outputDir, { recursive: true });
 await Promise.all([
