@@ -1,0 +1,57 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/.vinext/
+/out/
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (can opt-in for committing if needed)
+.env*
+!.env.example
+
+# vercel
+.vercel
+
+# typescript
+next-env.d.ts
+/dist/
+/.wrangler/
+/\.firebase/
+/outputs/
+/work/*
+!/work/build-firebase-site.mjs
+!/work/build-github-pages.mjs
+!/work/sanitize-operational-source.py
+!/work/build-offline-html.mjs
+!/work/offline-shell.js
+!/work/test-desbloqueios-import.mjs
+firebase-debug.log*
+firestore-debug.log*
+ui-debug.log*
+/firebase/functions/node_modules/
+/firebase/functions/.secret.local
+/firebase/public/
+*firebase-service-account*.json

@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#07142b">
+  <meta name="robots" content="noindex, nofollow">
+  <title>K.A - Gestão de Paradas | Manutenção</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #07142b;
+      color: #f8fafc;
+    }
+    * { box-sizing: border-box; }
+    html, body { min-height: 100%; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      min-height: 100svh;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 15% 15%, rgba(24, 188, 156, .18), transparent 34rem),
+        radial-gradient(circle at 88% 80%, rgba(29, 92, 255, .20), transparent 32rem),
+        linear-gradient(145deg, #061128 0%, #0a1b36 55%, #07142b 100%);
+    }
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: .20;
+      background-image:
+        linear-gradient(rgba(255,255,255,.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.05) 1px, transparent 1px);
+      background-size: 48px 48px;
+      mask-image: linear-gradient(to bottom, black, transparent 80%);
+    }
+    main {
+      position: relative;
+      width: min(720px, calc(100% - 32px));
+      padding: clamp(28px, 6vw, 54px);
+      border: 1px solid rgba(255,255,255,.13);
+      border-radius: 28px;
+      background: rgba(8, 24, 49, .78);
+      box-shadow: 0 30px 80px rgba(0,0,0,.35);
+      backdrop-filter: blur(18px);
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 13px;
+      margin-bottom: clamp(36px, 7vw, 58px);
+      font-weight: 800;
+      letter-spacing: -.02em;
+    }
+    .mark {
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      border-radius: 13px;
+      background: linear-gradient(135deg, #16c7a5, #1378ff);
+      box-shadow: 0 12px 28px rgba(19, 120, 255, .28);
+      font-size: 14px;
+      letter-spacing: -.04em;
+    }
+    .brand span:last-child { color: #cbd5e1; font-weight: 600; }
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      margin-bottom: 18px;
+      padding: 8px 12px;
+      border: 1px solid rgba(45, 212, 191, .28);
+      border-radius: 999px;
+      color: #7cebd6;
+      background: rgba(20, 184, 166, .08);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .status::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #2dd4bf;
+      box-shadow: 0 0 0 6px rgba(45, 212, 191, .12);
+      animation: pulse 1.8s ease-in-out infinite;
+    }
+    h1 {
+      max-width: 620px;
+      margin: 0;
+      font-size: clamp(38px, 8vw, 68px);
+      line-height: .98;
+      letter-spacing: -.055em;
+    }
+    p {
+      max-width: 580px;
+      margin: 24px 0 0;
+      color: #b8c6da;
+      font-size: clamp(16px, 2.6vw, 19px);
+      line-height: 1.65;
+    }
+    .notice {
+      display: flex;
+      gap: 13px;
+      align-items: flex-start;
+      margin-top: 34px;
+      padding-top: 24px;
+      border-top: 1px solid rgba(255,255,255,.10);
+      color: #d9e3f0;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .shield {
+      flex: 0 0 auto;
+      width: 28px;
+      height: 28px;
+      display: grid;
+      place-items: center;
+      border-radius: 9px;
+      color: #7cebd6;
+      background: rgba(45, 212, 191, .10);
+    }
+    footer {
+      margin-top: 28px;
+      color: #70819a;
+      font-size: 12px;
+      letter-spacing: .04em;
+    }
+    @keyframes pulse { 50% { transform: scale(.72); opacity: .58; } }
+    @media (prefers-reduced-motion: reduce) { .status::before { animation: none; } }
+  </style>
+</head>
+<body>
+  <main aria-labelledby="maintenance-title">
+    <div class="brand" aria-label="K.A - Gestão de Paradas">
+      <span class="mark">K.A</span>
+      <span>Gestão de Paradas</span>
+    </div>
+    <div class="status">Nova versão em desenvolvimento</div>
+    <h1 id="maintenance-title">Estamos em manutenção.</h1>
+    <p>O K.A - Gestão de Paradas está sendo atualizado para uma nova versão. O acesso estará disponível novamente em breve.</p>
+    <div class="notice">
+      <span class="shield" aria-hidden="true">✓</span>
+      <span>Os dados e o sistema atual permanecem preservados durante esta atualização.</span>
+    </div>
+    <footer>K.A · Gestão de Paradas</footer>
+  </main>
+</body>
+</html>
