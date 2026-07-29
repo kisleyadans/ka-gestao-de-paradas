@@ -38,6 +38,12 @@ podem usar essa conta ao mesmo tempo; cada pessoa informa o próprio nome para o
 histórico. O Firestore mescla alterações feitas em atividades diferentes e rejeita
 conflitos no mesmo campo. A senha deve ser trocada antes de uso em produção.
 
+Na aba **Avanço**, cada disciplina usa uma conta própria do Firebase Authentication.
+O e-mail é gerado pelo nome normalizado da disciplina: `Elétrica` usa
+`eletrica@ka-paradas.app`, por exemplo. O usuário vê somente as atividades da sua
+disciplina e grava progresso, status e observação em `ka_discipline_progress_v2`.
+Essas contas e senhas devem ser criadas uma vez em **Firebase Authentication > Users**.
+
 ## Publicação pelo GitHub
 
 O site estático é publicado pelo GitHub Pages quando a branch `main` é atualizada.

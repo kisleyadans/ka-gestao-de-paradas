@@ -87,6 +87,7 @@ const checks = [
   [syncScript.includes("signInWithEmailAndPassword"), "autenticação gratuita"],
   [syncScript.includes("runTransaction"), "sincronização concorrente"],
   [syncScript.includes("ka_free_state_v2"), "base vazia da nova parada"],
+  [syncScript.includes("ka_discipline_progress_v2"), "avanço protegido por disciplina"],
   [syncScript.includes("desbloqueioBaseName"), "nome da base compartilhada"],
 ];
 for (const [ok, label] of checks) {

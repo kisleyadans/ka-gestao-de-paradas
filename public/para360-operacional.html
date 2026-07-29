@@ -3651,13 +3651,18 @@
         <span class="avanco-login-ico">📈</span>
         <div>
           <h2 style="margin:0;color:#00693C">Atualização de Avanço</h2>
-          <span class="small-muted">Entre com a conta compartilhada de editor para atualizar as atividades. Vários computadores podem trabalhar simultaneamente.</span>
+          <span class="small-muted">Selecione sua disciplina e use a senha correspondente. Serão exibidas somente as atividades autorizadas para esse acesso.</span>
         </div>
       </div>
       <div style="display:flex;flex-direction:column;gap:10px;margin-top:14px">
-        <input id="avSupervisao" type="hidden" value="editor-geral">
-        <input id="avSenha" type="hidden" value="">
-        <button class="small ok" onclick="avEntrar()" style="margin-top:8px;padding:12px;font-size:13px">🔐 Entrar como editor</button>
+        <label for="avSupervisao" style="font-size:11px;font-weight:800;color:#40506A">Disciplina</label>
+        <select id="avSupervisao" onchange="avMostrarConta()"><option value="">Carregando disciplinas...</option></select>
+        <label for="avNome" style="font-size:11px;font-weight:800;color:#40506A">Seu nome</label>
+        <input id="avNome" type="text" autocomplete="name" placeholder="Nome de quem fará a atualização">
+        <label for="avSenha" style="font-size:11px;font-weight:800;color:#40506A">Senha da disciplina</label>
+        <input id="avSenha" type="password" autocomplete="current-password" placeholder="Digite a senha">
+        <button class="small ok" onclick="avEntrar()" style="margin-top:8px;padding:12px;font-size:13px">🔐 Entrar na disciplina</button>
+        <div id="avLoginHint" class="small-muted">A senha é validada pelo Firebase Authentication.</div>
       </div>
       <div class="admin-hide" style="display:none!important">
         <strong style="font-size:12px;color:#00693C">👑 Painel do administrador</strong>
@@ -8340,20 +8345,45 @@ body.admin-mode .admin-bar{border-color:#C7E6D3;background:#F5FAF7}
   function popularSelectLogin(){
     const sel = document.getElementById('avSupervisao');
     if(!sel) return;
+    const atual = sel.value;
+    const disciplinas = Array.from(new Set((window.activities||[]).map(a=>String(a.disciplina||'').trim()).filter(Boolean)))
+      .sort((a,b)=>a.localeCompare(b,'pt-BR'));
     sel.innerHTML = '<option value="">— Selecione sua supervisão —</option>'
-      + supervisoes.map(s=>'<option value="'+s.id+'">'+esc(s.icone||'👤')+' '+esc(s.nome)+'</option>').join('');
-    if(!supervisoes.length){
-      sel.innerHTML = '<option value="">Nenhuma supervisão cadastrada — peça ao admin</option>';
+      + disciplinas.map(d=>'<option value="'+esc(d)+'">'+esc(d)+'</option>').join('');
+    if(!disciplinas.length){
+      sel.innerHTML = '<option value="">Nenhuma disciplina disponível na base</option>';
     }
+    if(disciplinas.includes(atual)) sel.value = atual;
+    avMostrarConta();
   }
+
+  window.avMostrarConta = function(){
+    const disciplina = document.getElementById('avSupervisao')?.value || '';
+    const hint = document.getElementById('avLoginHint');
+    if(!hint) return;
+    const email = disciplina && typeof window.kaDisciplineEmail==='function' ? window.kaDisciplineEmail(disciplina) : '';
+    hint.textContent = email ? 'Conta Firebase desta disciplina: '+email : 'A senha é validada pelo Firebase Authentication.';
+  };
 
   // === Login ===
   window.avEntrar = async function(){
-    if(typeof window.pcmLogin==='function') return window.pcmLogin();
-    alert('O acesso do editor ainda está carregando. Tente novamente em alguns segundos.');
+    if(typeof window.kaLoginDiscipline!=='function'){
+      alert('O acesso do Firebase ainda está carregando. Tente novamente em alguns segundos.'); return;
+    }
+    const disciplina = document.getElementById('avSupervisao').value;
+    const nome = document.getElementById('avNome').value.trim();
+    const senha = document.getElementById('avSenha').value;
+    if(!disciplina){ alert('Selecione sua disciplina.'); return; }
+    if(!nome){ alert('Informe seu nome.'); return; }
+    if(!senha){ alert('Informe a senha da disciplina.'); return; }
+    try{
+      await window.kaLoginDiscipline(disciplina, senha, nome);
+      document.getElementById('avSenha').value='';
+      avRenderAll();
+    }catch(error){ alert(error.message||'Não foi possível entrar.'); }
   };
   window.avSair = function(){
-    if(typeof window.pcmLogout==='function') return window.pcmLogout();
+    if(typeof window.kaLogoutDiscipline==='function') return window.kaLogoutDiscipline();
   };
 
   // === Filtragem de atividades pela disciplina da supervisão ===
@@ -8497,7 +8527,7 @@ body.admin-mode .admin-bar{border-color:#C7E6D3;background:#F5FAF7}
   window.avOnStatus = function(el, id){ markDirty(id); };
   window.avOnObs = function(el, id){ markDirty(id); };
 
-  window.avSalvar = function(id){
+  window.avSalvar = async function(id){
     if(!supAtual){ alert('Sessão expirada. Faça login novamente.'); return; }
     const item = document.querySelector('.avanco-item[data-id="'+CSS.escape(id)+'"]');
     if(!item) return;
@@ -8511,23 +8541,27 @@ body.admin-mode .admin-bar{border-color:#C7E6D3;background:#F5FAF7}
     const prog = parseInt(item.querySelector('.avanco-item-input').value||'0',10);
     const status = item.querySelector('.avanco-item-status').value;
     const obs = item.querySelector('.avanco-item-obs').value;
-    a.progresso = Math.max(0, Math.min(100, prog));
-    a.status = status;
-    a.obs = obs;
-    a.autoProgress = false; // usuário atualizou manualmente
-    a.updatedBy = supAtual.nome;
-    a.updatedAt = new Date().toISOString();
-    // Persistir usando função original do painel
-    try{ if(typeof saveLocal==='function') saveLocal(); }catch(e){}
-    try{ if(typeof renderAll==='function') renderAll(); }catch(e){}
-    clearDirty(id);
-    renderStats();
-    // Feedback visual rápido
     const btn = item.querySelector('[data-save]');
-    if(btn){ const orig=btn.textContent; btn.textContent='✔ Salvo!'; setTimeout(()=>{ if(btn.textContent==='✔ Salvo!') btn.textContent='💾 Salvar'; }, 1200); }
+    if(btn){ btn.disabled=true; btn.textContent='Salvando...'; }
+    try{
+      if(typeof window.kaSaveDisciplineProgress!=='function') throw new Error('Sincronização do Firebase indisponível');
+      await window.kaSaveDisciplineProgress(id,{progresso:prog,status,obs,updatedBy:supAtual.nome});
+      a.progresso = Math.max(0, Math.min(100, prog));
+      a.status = status;
+      a.obs = obs;
+      a.autoProgress = false;
+      a.updatedBy = supAtual.nome;
+      a.updatedAt = new Date().toISOString();
+      clearDirty(id);
+      renderStats();
+      if(btn){ btn.textContent='✔ Salvo online!'; setTimeout(()=>{ if(btn.textContent==='✔ Salvo online!') btn.textContent='💾 Salvar'; }, 1400); }
+    }catch(error){
+      markDirty(id);
+      alert(error.message||'Não foi possível salvar o avanço online.');
+    }finally{ if(btn) btn.disabled=false; }
   };
 
-  window.avConcluir = function(id){
+  window.avConcluir = async function(id){
     if(!supAtual){ alert('Sessão expirada.'); return; }
     const item = document.querySelector('.avanco-item[data-id="'+CSS.escape(id)+'"]');
     if(!item) return;
@@ -8535,7 +8569,7 @@ body.admin-mode .admin-bar{border-color:#C7E6D3;background:#F5FAF7}
     item.querySelector('input[type=range]').value = 100;
     item.querySelector('.avanco-item-status').value = 'Concluída';
     markDirty(id);
-    avSalvar(id);
+    await avSalvar(id);
   };
 
   // === Trocar entre tela de login e edição ===
@@ -8548,6 +8582,9 @@ body.admin-mode .admin-bar{border-color:#C7E6D3;background:#F5FAF7}
       let nome = 'Editor geral';
       try{ nome = localStorage.getItem('ka_operator_name') || nome; }catch(e){}
       supAtual = { id:'editor-geral', nome, icone:'✏️', disciplinas, loggedAt:new Date().toISOString() };
+    } else if(window.kaDisciplineSession){
+      const sessao = window.kaDisciplineSession;
+      supAtual = {id:sessao.email,nome:sessao.name,icone:'👤',disciplinas:[sessao.discipline],loggedAt:new Date().toISOString()};
     } else {
       supAtual = null;
     }
@@ -8565,6 +8602,7 @@ body.admin-mode .admin-bar{border-color:#C7E6D3;background:#F5FAF7}
       popularSelectLogin();
     }
   }
+  window.avRefreshAccess = avRenderAll;
 
   // === MODAL de gerenciamento (admin) ===
   window.avAbrirGerenciar = function(){

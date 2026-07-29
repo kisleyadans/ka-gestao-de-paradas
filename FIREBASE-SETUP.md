@@ -26,6 +26,20 @@ anteriores são preservados, mas não aparecem nesta versão do aplicativo.
 
 Antes do uso em produção, troque a senha inicial no Firebase Authentication.
 
+## Senhas por disciplina na aba Avanço
+
+Crie uma conta em **Firebase Authentication > Users** para cada disciplina que
+aparecer na base. O próprio formulário de login mostra o e-mail esperado. Exemplos:
+
+- `Elétrica` → `eletrica@ka-paradas.app`;
+- `Instrumentação` → `instrumentacao@ka-paradas.app`;
+- `Mecânica` → `mecanica@ka-paradas.app`.
+
+Cada conta pode ter uma senha diferente. O Firestore guarda os avanços em
+`ka_discipline_progress_v2`; o painel só aplica um registro quando o e-mail
+autenticado corresponde à disciplina real da atividade. Uma falha de conexão ou
+permissão mantém a sessão aberta e informa que o salvamento não foi confirmado.
+
 ## Publicação manual
 
 ```powershell

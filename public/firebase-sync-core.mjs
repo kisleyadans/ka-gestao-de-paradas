@@ -32,6 +32,26 @@ export function normalizeActivity(item) {
   });
 }
 
+export function normalizeDiscipline(value) {
+  return String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
+}
+
+export function disciplineEmail(value) {
+  const slug = normalizeDiscipline(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 50);
+  return slug ? `${slug}@ka-paradas.app` : "";
+}
+
+export function isAuthorizedDisciplineProgress(activity, progress) {
+  if (!activity || !progress) return false;
+  return String(progress.activityId) === String(activity.id)
+    && progress.disciplineKey === normalizeDiscipline(activity.disciplina)
+    && progress.editorEmail === disciplineEmail(activity.disciplina);
+}
+
 export function sharedPart(value) {
   const state = value && typeof value === "object" ? value : {};
   return {

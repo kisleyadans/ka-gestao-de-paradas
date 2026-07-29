@@ -5,10 +5,27 @@ import {
   applyExclusiveActivityChange,
   bucketId,
   buildBuckets,
+  disciplineEmail,
+  isAuthorizedDisciplineProgress,
   mergeActivityChange,
   mergeKeyedCollection,
   mergeSharedState,
 } from "../public/firebase-sync-core.mjs";
+
+test("autoriza avanço somente para o e-mail da disciplina da atividade", () => {
+  const activity = { id: "ATV-E1", disciplina: "Elétrica" };
+  assert.equal(disciplineEmail(activity.disciplina), "eletrica@ka-paradas.app");
+  assert.equal(isAuthorizedDisciplineProgress(activity, {
+    activityId: "ATV-E1",
+    disciplineKey: "ELETRICA",
+    editorEmail: "eletrica@ka-paradas.app",
+  }), true);
+  assert.equal(isAuthorizedDisciplineProgress(activity, {
+    activityId: "ATV-E1",
+    disciplineKey: "MECANICA",
+    editorEmail: "mecanica@ka-paradas.app",
+  }), false);
+});
 
 test("divide atividades em blocos determinísticos para economizar leituras", () => {
   const activities = Array.from({ length: 240 }, (_, index) => ({

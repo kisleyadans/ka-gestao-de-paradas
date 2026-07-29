@@ -58,4 +58,13 @@ test("inclui a sincronização gratuita e concorrente no painel publicado", asyn
   assert.match(sync, /ka_operator_name/);
   assert.match(sync, /pcmGetContatos/);
   assert.match(sync, /Senha compartilhada do editor/i);
+  assert.match(sync, /ka_discipline_progress_v2/);
+  assert.match(sync, /kaLoginDiscipline/);
+  assert.match(sync, /kaSaveDisciplineProgress/);
+  assert.match(sync, /Firebase recusou a gravação · confira as regras publicadas/);
+  assert.doesNotMatch(sync, /forceConsultationMode/);
+  assert.match(panel, /Senha da disciplina/);
+  assert.match(panel, /somente as atividades autorizadas/i);
+  assert.match(rules, /match \/ka_discipline_progress_v2/);
+  assert.match(rules, /editorEmail == request\.auth\.token\.email/);
 });

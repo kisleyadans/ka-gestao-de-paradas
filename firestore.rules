@@ -29,6 +29,32 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // Cada conta de disciplina grava somente um documento de avanço. O painel
+    // também confere se o e-mail corresponde à disciplina da atividade antes
+    // de aplicar o registro sobre a base principal.
+    match /ka_discipline_progress_v2/{document} {
+      allow read: if true;
+      allow create, update: if request.auth != null
+        && request.resource.data.keys().hasOnly([
+          "activityId", "disciplineKey", "disciplineName", "editorEmail",
+          "progresso", "status", "obs", "updatedBy", "editorSessionId", "updatedAt"
+        ])
+        && request.resource.data.activityId is string
+        && request.resource.data.disciplineKey is string
+        && request.resource.data.disciplineName is string
+        && request.resource.data.editorEmail is string
+        && request.resource.data.progresso is number
+        && request.resource.data.progresso >= 0
+        && request.resource.data.progresso <= 100
+        && request.resource.data.status is string
+        && request.resource.data.obs is string
+        && request.resource.data.updatedBy is string
+        && request.resource.data.editorSessionId is string
+        && request.resource.data.updatedAt == request.time
+        && (isSharedEditor() || request.resource.data.editorEmail == request.auth.token.email);
+      allow delete: if isSharedEditor();
+    }
+
     // Documentos antigos da trava são mantidos inacessíveis e deixam de ser
     // usados pela aplicação. Isso evita depender de uma limpeza destrutiva.
     match /ka_editor_lock/{document} {

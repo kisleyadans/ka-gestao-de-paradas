@@ -22,7 +22,10 @@ import {
   bucketId,
   buildBuckets,
   clone,
+  disciplineEmail,
+  isAuthorizedDisciplineProgress,
   normalizeActivity,
+  normalizeDiscipline,
   same,
   sharedPart,
 } from "./firebase-sync-core.mjs";
@@ -53,8 +56,11 @@ import {
   // intactas no Firestore como histórico e não são carregadas por esta versão.
   const stateRef = doc(db, "ka_free_state_v2", "current");
   const bucketsRef = collection(db, "ka_free_activity_buckets_v2");
+  const progressRef = collection(db, "ka_discipline_progress_v2");
 
   let operator = false;
+  let disciplineEditor = false;
+  let disciplineSession = null;
   let operatorName = "";
   let editorSessionId = "";
   let applyingRemote = false;
@@ -66,8 +72,11 @@ import {
   let baselineSharedState = null;
   let stateLoaded = false;
   let bucketsLoaded = false;
+  let progressLoaded = false;
   let remoteStateData = null;
   let remoteBuckets = new Map();
+  let remoteProgress = new Map();
+  let progressRevision = 0;
   let initializing = false;
   let pendingRemote = false;
   let lastRemoteSignature = "";
@@ -127,6 +136,12 @@ import {
     return `ka-${Date.now()}-${Math.random().toString(36).slice(2)}`;
   }
 
+  function publishDisciplineSession() {
+    window.kaDisciplineSession = disciplineSession ? { ...disciplineSession } : null;
+    window.kaDisciplineEmail = disciplineEmail;
+    if (typeof window.avRefreshAccess === "function") window.avRefreshAccess();
+  }
+
   function savedEditorSessionId() {
     try { return sessionStorage.getItem("ka_editor_session") || ""; } catch { return ""; }
   }
@@ -143,18 +158,6 @@ import {
       button.dataset.editorBusy = "0";
       button.title = "Entrar com a conta compartilhada de edição";
     }
-  }
-
-  async function forceConsultationMode(message) {
-    if (message) setStatus(message, "error");
-    operator = false;
-    editorSessionId = "";
-    try {
-      sessionStorage.removeItem("ka_editor_session");
-      sessionStorage.setItem("pcm_admin", "0");
-    } catch {}
-    try { await signOut(auth); } catch {}
-    window.location.reload();
   }
 
   function buildState() {
@@ -213,6 +216,7 @@ import {
     if (embedded) embedded.textContent = JSON.stringify(state);
     backupStateLocally(state);
     if (typeof window.renderAll === "function") window.renderAll();
+    if (typeof window.avRefreshAccess === "function") window.avRefreshAccess();
     if (typeof window.updateHeaderTimestamp === "function") window.updateHeaderTimestamp();
   }
 
@@ -248,7 +252,17 @@ import {
     const versions = new Map();
     const activitiesFromBuckets = entries.map((entry) => {
       versions.set(entry.id, Number(entry.revision || 1));
-      return normalizeActivity(entry.activity);
+      const activity = normalizeActivity(entry.activity);
+      const progress = remoteProgress.get(String(activity.id));
+      if (isAuthorizedDisciplineProgress(activity, progress)) {
+        activity.progresso = Math.max(0, Math.min(100, Number(progress.progresso || 0)));
+        activity.status = String(progress.status || activity.status || "Não iniciada");
+        activity.obs = String(progress.obs ?? activity.obs ?? "");
+        activity.autoProgress = false;
+        activity.updatedBy = String(progress.updatedBy || "");
+        activity.updatedAt = progress.updatedAt || activity.updatedAt;
+      }
+      return activity;
     });
     return {
       state: { ...sharedPart(remoteStateData.baseState), activities: activitiesFromBuckets },
@@ -256,12 +270,13 @@ import {
       signature: JSON.stringify({
         stateRevision: remoteStateData.revision || 0,
         buckets: Array.from(remoteBuckets.entries()).map(([id, value]) => [id, value.revision || 0]),
+        progressRevision,
       }),
     };
   }
 
   function applyAvailableRemote() {
-    if (!stateLoaded || !bucketsLoaded) return;
+    if (!stateLoaded || !bucketsLoaded || !progressLoaded) return;
     if (!remoteStateData) {
       if (operator && !initializing) initializeRemote();
       else if (!operator) setStatus("Online · aguardando a primeira carga do operador", "pending");
@@ -281,7 +296,11 @@ import {
       lastRemoteSignature = assembled.signature;
     }
     pendingRemote = false;
-    const mode = operator ? `${operatorName} · edição compartilhada` : "somente consulta";
+    const mode = operator
+      ? `${operatorName} · administrador`
+      : disciplineEditor
+        ? `${disciplineSession?.name || "Disciplina"} · avanço`
+        : "somente consulta";
     setStatus(`Online · ${mode} · ${timeLabel(remoteStateData.updatedAt)}`, "online");
   }
 
@@ -512,20 +531,19 @@ import {
     } catch (error) {
       saveFailed = true;
       console.error("Shared state save failed", error);
-      dirty = true;
+      dirty = false;
       const denied = error?.code === "permission-denied";
       if (denied) {
-        dirty = false;
-        setStatus("Sessão de edição sem permissão · entrando em consulta", "error");
-        setTimeout(() => forceConsultationMode(), 700);
+        setStatus("Firebase recusou a gravação · confira as regras publicadas", "error");
       } else {
-        setStatus("Falha ao sincronizar · tentando novamente", "error");
+        setStatus("Falha ao sincronizar · sua sessão continua ativa", "error");
       }
     } finally {
       saving = false;
       if (!dirty && pendingRemote) applyAvailableRemote();
-      if (dirty) scheduleSave(saveFailed ? 1800 : 120);
+      if (dirty && !saveFailed) scheduleSave(120);
     }
+    return !saveFailed;
   }
 
   function scheduleSave(delay) {
@@ -550,9 +568,61 @@ import {
     }
     if (saving) throw new Error("A sincronização anterior ainda não terminou");
     dirty = true;
-    await saveRemote();
-    if (dirty) throw new Error("A alteração ainda não foi confirmada pela base online");
+    const saved = await saveRemote();
+    if (!saved || dirty) throw new Error("A alteração não foi confirmada pelo Firebase. Sua sessão continua ativa; verifique as regras e a conexão.");
     return true;
+  }
+
+  async function saveDisciplineProgress(activityId, patch) {
+    const activity = (Array.isArray(window.activities) ? window.activities : [])
+      .find((item) => String(item.id) === String(activityId));
+    if (!activity) throw new Error("Atividade não encontrada na base online");
+    const expectedKey = normalizeDiscipline(activity.disciplina);
+    const expectedEmail = disciplineEmail(activity.disciplina);
+    if (!operator) {
+      if (!disciplineEditor || !disciplineSession) throw new Error("Entre com a senha da sua disciplina");
+      if (disciplineSession.key !== expectedKey || disciplineSession.email !== expectedEmail) {
+        throw new Error("Esta atividade pertence a outra disciplina");
+      }
+    }
+    const progress = Math.max(0, Math.min(100, Number(patch?.progresso || 0)));
+    const status = String(patch?.status || "Não iniciada");
+    const observation = String(patch?.obs || "").slice(0, 4000);
+    const updater = String(patch?.updatedBy || disciplineSession?.name || operatorName || "Editor").slice(0, 80);
+    const progressDoc = doc(progressRef, encodeURIComponent(String(activity.id)));
+    setStatus(`Salvando avanço de ${activity.disciplina}...`, "pending");
+    try {
+      await runTransaction(db, async (transaction) => {
+        transaction.set(progressDoc, {
+          activityId: String(activity.id),
+          disciplineKey: expectedKey,
+          disciplineName: String(activity.disciplina || ""),
+          editorEmail: expectedEmail,
+          progresso: progress,
+          status,
+          obs: observation,
+          updatedBy: updater,
+          editorSessionId: editorSessionId || createEditorSessionId(),
+          updatedAt: serverTimestamp(),
+        });
+      });
+      activity.progresso = progress;
+      activity.status = status;
+      activity.obs = observation;
+      activity.autoProgress = false;
+      activity.updatedBy = updater;
+      setStatus(`Online · ${updater} · avanço salvo às ${timeLabel()}`, "online");
+      return true;
+    } catch (error) {
+      console.error("Discipline progress save failed", error);
+      setStatus(
+        error?.code === "permission-denied"
+          ? "Firebase recusou o avanço · publique as regras atualizadas"
+          : "Falha ao salvar avanço · sessão mantida",
+        "error",
+      );
+      throw new Error("O avanço não foi confirmado online. A sessão continua aberta; confira a conexão e as regras do Firebase.");
+    }
   }
 
   function wrapSaver(name, delay) {
@@ -620,6 +690,43 @@ import {
     }
   }
 
+  async function loginDiscipline(discipline, password, name) {
+    const cleanDiscipline = String(discipline || "").trim();
+    const email = disciplineEmail(cleanDiscipline);
+    const cleanName = String(name || "").trim().slice(0, 80);
+    if (!email) throw new Error("Selecione uma disciplina");
+    if (!cleanName) throw new Error("Informe seu nome");
+    if (!password) throw new Error("Informe a senha da disciplina");
+    setStatus(`Validando acesso de ${cleanDiscipline}...`, "pending");
+    try {
+      await setPersistence(auth, browserLocalPersistence);
+      const credential = await signInWithEmailAndPassword(auth, email, password);
+      if (credential.user.email !== email) throw new Error("Conta incompatível com a disciplina");
+      editorSessionId = createEditorSessionId();
+      disciplineSession = {
+        discipline: cleanDiscipline,
+        key: normalizeDiscipline(cleanDiscipline),
+        email,
+        name: cleanName,
+      };
+      disciplineEditor = true;
+      operator = false;
+      try {
+        sessionStorage.setItem("ka_editor_session", editorSessionId);
+        localStorage.setItem("ka_discipline_session", JSON.stringify(disciplineSession));
+        sessionStorage.setItem("pcm_admin", "0");
+        localStorage.setItem("ka_discipline_name", cleanName);
+      } catch {}
+      publishDisciplineSession();
+      setStatus(`Online · ${cleanName} · ${cleanDiscipline}`, "online");
+      return { ...disciplineSession };
+    } catch (error) {
+      console.error("Discipline login failed", error);
+      setStatus("Senha incorreta ou conta da disciplina não cadastrada", "error");
+      throw new Error(`Não foi possível entrar em ${cleanDiscipline}. Confira a senha e o cadastro ${email} no Firebase.`);
+    }
+  }
+
   async function logout() {
     try {
       await signOut(auth);
@@ -627,6 +734,7 @@ import {
       editorSessionId = "";
       try {
         sessionStorage.removeItem("ka_editor_session");
+        localStorage.removeItem("ka_discipline_session");
         sessionStorage.setItem("pcm_admin", "0");
       } catch {}
       window.location.reload();
@@ -666,6 +774,23 @@ import {
       setStatus("Sem conexão com as atividades online", "error");
     });
 
+    onSnapshot(progressRef, (snapshot) => {
+      const next = new Map();
+      snapshot.forEach((item) => {
+        const data = item.data();
+        if (data?.activityId) next.set(String(data.activityId), data);
+      });
+      remoteProgress = next;
+      progressRevision += 1;
+      progressLoaded = true;
+      lastRemoteSignature = "";
+      applyAvailableRemote();
+    }, (error) => {
+      console.error("Progress listener failed", error);
+      progressLoaded = true;
+      setStatus("Sem conexão com os avanços online · confira as regras", "error");
+    });
+
     renderEditorPresence();
   }
 
@@ -676,8 +801,22 @@ import {
     window.kaClearSharedActivities = clearSharedActivities;
     window.kaSaveSharedNow = flushSharedChanges;
     window.kaScheduleSharedSave = scheduleSave;
+    window.kaLoginDiscipline = loginDiscipline;
+    window.kaLogoutDiscipline = logout;
+    window.kaSaveDisciplineProgress = saveDisciplineProgress;
+    window.kaDisciplineEmail = disciplineEmail;
+    try { await setPersistence(auth, browserLocalPersistence); } catch {}
     const user = await waitForAuth();
     operator = user?.email === OPERATOR_EMAIL;
+    if (user && !operator) {
+      try {
+        const saved = JSON.parse(localStorage.getItem("ka_discipline_session") || "null");
+        if (saved?.email === user.email) {
+          disciplineSession = saved;
+          disciplineEditor = true;
+        }
+      } catch {}
+    }
     try { operatorName = operator ? (localStorage.getItem("ka_operator_name") || "Operador PCM") : ""; } catch {
       operatorName = operator ? "Operador PCM" : "";
     }
@@ -689,15 +828,18 @@ import {
         try { sessionStorage.setItem("ka_editor_session", editorSessionId); } catch {}
       }
     }
+    if (disciplineEditor && !editorSessionId) {
+      editorSessionId = savedEditorSessionId() || createEditorSessionId();
+      try { sessionStorage.setItem("ka_editor_session", editorSessionId); } catch {}
+    }
 
     let localAdmin = false;
     try { localAdmin = sessionStorage.getItem("pcm_admin") === "1"; } catch {}
     if (localAdmin !== operator) {
       try { sessionStorage.setItem("pcm_admin", operator ? "1" : "0"); } catch {}
-      window.location.reload();
-      return;
     }
 
+    publishDisciplineSession();
     installSaveHooks();
     startRealtimeSync();
   }
