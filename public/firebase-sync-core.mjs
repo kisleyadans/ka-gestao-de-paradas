@@ -9,6 +9,7 @@ export const SHARED_KEYS = [
   "desbloqueios",
   "desbloqueioSourceVersion",
   "desbloqueioBaseName",
+  "contatos",
   "refTime",
 ];
 
@@ -43,6 +44,7 @@ export function sharedPart(value) {
     desbloqueios: Array.isArray(state.desbloqueios) ? clone(state.desbloqueios) : [],
     desbloqueioSourceVersion: typeof state.desbloqueioSourceVersion === "string" ? state.desbloqueioSourceVersion : "",
     desbloqueioBaseName: typeof state.desbloqueioBaseName === "string" ? state.desbloqueioBaseName : "",
+    contatos: Array.isArray(state.contatos) ? clone(state.contatos) : [],
     refTime: typeof state.refTime === "string" ? state.refTime : "",
   };
 }
@@ -248,7 +250,7 @@ export function mergeSharedState(currentValue, baseValue, nextValue) {
   for (const key of changedSharedKeys(base, next)) {
     if (same(current[key], base[key]) || same(current[key], next[key])) merged[key] = clone(next[key]);
     else if (key === "progressSnapshots") merged[key] = mergeSnapshots(current[key], next[key]);
-    else if (["limpezas", "bloqueios", "desbloqueios"].includes(key)) {
+    else if (["limpezas", "bloqueios", "desbloqueios", "contatos"].includes(key)) {
       const result = mergeKeyedCollection(current[key], base[key], next[key]);
       if (result.conflicts.length > 0) conflicts.push(...result.conflicts.map((field) => `${key}.${field}`));
       else merged[key] = result.value;

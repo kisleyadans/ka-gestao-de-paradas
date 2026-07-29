@@ -2,73 +2,41 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    function isOperator() {
+    function isSharedEditor() {
       return request.auth != null
         && request.auth.token.email == "operador@ka-paradas.app";
     }
 
-    function hasActiveEditorSession() {
-      let editor = get(/databases/$(database)/documents/ka_editor_lock/current);
-      return isOperator()
-        && editor.data.sessionId is string
-        && editor.data.heartbeatAt is timestamp
-        && editor.data.released == false
-        && editor.data.heartbeatAt > request.time - duration.value(3, "m")
-        && request.resource.data.editorSessionId == editor.data.sessionId;
+    function hasAuditMetadata() {
+      return request.resource.data.updatedBy is string
+        && request.resource.data.updatedBy.size() > 0
+        && request.resource.data.editorSessionId is string
+        && request.resource.data.editorSessionId.size() > 0
+        && request.resource.data.updatedAt == request.time;
     }
 
-    function validEditorLockPayload() {
-      return request.resource.data.sessionId is string
-        && request.resource.data.holderName is string
-        && request.resource.data.released is bool
-        && request.resource.data.heartbeatAt == request.time;
-    }
-
-    function validEditorPresencePayload() {
-      let editor = getAfter(/databases/$(database)/documents/ka_editor_lock/current);
-      return isOperator()
-        && request.resource.data.holderName is string
-        && request.resource.data.released is bool
-        && request.resource.data.heartbeatAt == request.time
-        && editor.data.holderName == request.resource.data.holderName
-        && editor.data.released == request.resource.data.released
-        && editor.data.heartbeatAt == request.time;
-    }
-
-    // Um único navegador pode manter o posto de edição. Outro só assume
-    // quando o posto anterior foi encerrado ou ficou inativo por 3 minutos.
-    match /ka_editor_lock/current {
-      allow read: if isOperator();
-      allow create: if isOperator() && validEditorLockPayload();
-      allow update: if isOperator()
-        && validEditorLockPayload()
-        && (
-          request.resource.data.sessionId == resource.data.sessionId
-          || resource.data.released == true
-          || resource.data.heartbeatAt <= request.time - duration.value(3, "m")
-        );
-      allow delete: if false;
-    }
-
-    // A consulta pública mostra apenas quem está atualizando e se o posto está
-    // ocupado; o identificador secreto da sessão permanece no documento privado.
-    match /ka_editor_presence/current {
-      allow read: if true;
-      allow create, update: if validEditorPresencePayload();
-      allow delete: if false;
-    }
-
-    // Consulta pública; somente a conta geral de operador pode alterar.
+    // Dashboard e Curva S permanecem públicos. A mesma conta de editor pode
+    // ser usada em vários computadores; conflitos são resolvidos por atividade.
     match /ka_free_state/{document} {
       allow read: if true;
-      allow create, update: if hasActiveEditorSession();
+      allow create, update: if isSharedEditor() && hasAuditMetadata();
       allow delete: if false;
     }
 
     match /ka_free_activity_buckets/{document} {
       allow read: if true;
-      allow create, update: if hasActiveEditorSession();
+      allow create, update: if isSharedEditor() && hasAuditMetadata();
       allow delete: if false;
+    }
+
+    // Documentos antigos da trava são mantidos inacessíveis e deixam de ser
+    // usados pela aplicação. Isso evita depender de uma limpeza destrutiva.
+    match /ka_editor_lock/{document} {
+      allow read, write: if false;
+    }
+
+    match /ka_editor_presence/{document} {
+      allow read, write: if false;
     }
 
     match /{document=**} {

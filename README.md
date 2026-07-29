@@ -6,8 +6,8 @@ desbloqueios, limpezas, reuniões e relatório da parada.
 
 ## Formas de uso
 
-- **Online atual:** aplicação Vinext publicada pelo Sites, com Cloudflare D1.
-- **Online Firebase:** versão preparada para Firebase Hosting, Cloud Functions e Firestore.
+- **Online atual:** site estático no GitHub Pages com Firebase Authentication e Firestore.
+- **Servidor local:** aplicação Vinext com a API de desenvolvimento.
 - **Offline:** HTML único em `outputs/KA-Gestao-de-Paradas-OFFLINE.html`.
 
 ## Desenvolvimento
@@ -27,15 +27,16 @@ npm run build:firebase
 node work/build-offline-html.mjs
 ```
 
-A versão Firebase é gerada em `firebase/public`. A API fica em
-`firebase/functions`, e o guia de primeira publicação está em
+A versão Firebase é gerada em `firebase/public`. O guia de configuração está em
 `FIREBASE-SETUP.md`.
 
 ## Controle de acesso
 
-Quem possui o link pode consultar o plano. Alterações exigem uma sessão de operador.
-No Firebase, a senha é validada pela API e armazenada no Secret Manager; ela não é
-gravada no HTML nem no GitHub. O Firestore bloqueia acesso direto do navegador.
+Quem possui o link pode consultar o plano. Alterações exigem a conta compartilhada
+`operador@ka-paradas.app`, com senha inicial de teste `PCM2026`. Vários computadores
+podem usar essa conta ao mesmo tempo; cada pessoa informa o próprio nome para o
+histórico. O Firestore mescla alterações feitas em atividades diferentes e rejeita
+conflitos no mesmo campo. A senha deve ser trocada antes de uso em produção.
 
 ## Publicação pelo GitHub
 

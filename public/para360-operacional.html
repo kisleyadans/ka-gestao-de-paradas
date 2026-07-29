@@ -3622,19 +3622,15 @@
         <span class="avanco-login-ico">📈</span>
         <div>
           <h2 style="margin:0;color:#00693C">Atualização de Avanço</h2>
-          <span class="small-muted">Selecione sua supervisão e informe a senha para atualizar as atividades da sua disciplina.</span>
+          <span class="small-muted">Entre com a conta compartilhada de editor para atualizar as atividades. Vários computadores podem trabalhar simultaneamente.</span>
         </div>
       </div>
       <div style="display:flex;flex-direction:column;gap:10px;margin-top:14px">
-        <label style="font-size:12px;font-weight:800;color:#40506A">Supervisão</label>
-        <select id="avSupervisao" style="padding:10px;font-size:14px;font-weight:700">
-          <option value="">— Selecione sua supervisão —</option>
-        </select>
-        <label style="font-size:12px;font-weight:800;color:#40506A;margin-top:6px">Senha</label>
-        <input id="avSenha" type="password" placeholder="Digite sua senha" style="padding:10px;font-size:14px" onkeydown="if(event.key==='Enter')avEntrar()">
-        <button class="small ok" onclick="avEntrar()" style="margin-top:8px;padding:12px;font-size:13px">🔐 Entrar</button>
+        <input id="avSupervisao" type="hidden" value="editor-geral">
+        <input id="avSenha" type="hidden" value="">
+        <button class="small ok" onclick="avEntrar()" style="margin-top:8px;padding:12px;font-size:13px">🔐 Entrar como editor</button>
       </div>
-      <div class="admin-hide" style="margin-top:16px;padding:12px;background:#F5FAF7;border:1px dashed #C7E6D3;border-radius:8px">
+      <div class="admin-hide" style="display:none!important">
         <strong style="font-size:12px;color:#00693C">👑 Painel do administrador</strong>
         <div class="small-muted" style="margin:6px 0 8px">Gerencie as supervisões, senhas e disciplinas atribuídas.</div>
         <button class="small secondary" onclick="avAbrirGerenciar()" style="width:100%">⚙️ Gerenciar Supervisões</button>
@@ -7967,7 +7963,14 @@ body.admin-mode .admin-bar{border-color:#C7E6D3;background:#F5FAF7}
   }
   function saveContatosStorage(){
     try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(contatos)); }catch(e){}
+    try{ if(typeof window.kaScheduleSharedSave==='function') window.kaScheduleSharedSave(200); }catch(e){}
   }
+  window.pcmGetContatos = function(){ return contatos.map(c=>({...c})); };
+  window.pcmSetContatos = function(lista){
+    contatos = Array.isArray(lista) ? lista.map(c=>({...c})) : [];
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(contatos)); }catch(e){}
+    if(typeof window.renderContatos==='function') window.renderContatos();
+  };
   function esc(s){
     return String(s==null?'':s).replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
@@ -8317,23 +8320,11 @@ body.admin-mode .admin-bar{border-color:#C7E6D3;background:#F5FAF7}
 
   // === Login ===
   window.avEntrar = async function(){
-    const id = document.getElementById('avSupervisao').value;
-    const senha = document.getElementById('avSenha').value;
-    if(!id){ alert('Selecione a supervisão.'); return; }
-    if(!senha){ alert('Informe a senha.'); return; }
-    const sup = supervisoes.find(s=>s.id===id);
-    if(!sup){ alert('Supervisão não encontrada.'); return; }
-    const hash = await sha256(senha);
-    if(hash!==sup.senhaHash){ alert('Senha incorreta.'); return; }
-    supAtual = { id:sup.id, nome:sup.nome, icone:sup.icone, disciplinas:sup.disciplinas, loggedAt:new Date().toISOString() };
-    saveSupAtual();
-    document.getElementById('avSenha').value='';
-    avRenderAll();
+    if(typeof window.pcmLogin==='function') return window.pcmLogin();
+    alert('O acesso do editor ainda está carregando. Tente novamente em alguns segundos.');
   };
   window.avSair = function(){
-    supAtual = null;
-    saveSupAtual();
-    avRenderAll();
+    if(typeof window.pcmLogout==='function') return window.pcmLogout();
   };
 
   // === Filtragem de atividades pela disciplina da supervisão ===
@@ -8523,6 +8514,14 @@ body.admin-mode .admin-bar{border-color:#C7E6D3;background:#F5FAF7}
     const login = document.getElementById('avancoLogin');
     const edicao = document.getElementById('avancoEdicao');
     if(!login || !edicao) return;
+    if(isAdmin()){
+      const disciplinas = Array.from(new Set((window.activities||[]).map(a=>a.disciplina).filter(Boolean)));
+      let nome = 'Editor geral';
+      try{ nome = localStorage.getItem('ka_operator_name') || nome; }catch(e){}
+      supAtual = { id:'editor-geral', nome, icone:'✏️', disciplinas, loggedAt:new Date().toISOString() };
+    } else {
+      supAtual = null;
+    }
     if(supAtual){
       login.style.display='none';
       edicao.style.display='block';

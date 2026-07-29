@@ -23,7 +23,7 @@ const embeddedMatch = source.match(
 );
 if (!embeddedMatch) throw new Error("Bloco dadosEmbutidos não encontrado.");
 const embeddedState = JSON.parse(embeddedMatch[1]);
-for (const key of ["activities", "bloqueios", "desbloqueios", "limpezas", "meetingPlan", "progressSnapshots"]) {
+for (const key of ["activities", "bloqueios", "desbloqueios", "limpezas", "meetingPlan", "progressSnapshots", "contatos"]) {
   if (Array.isArray(embeddedState[key]) && embeddedState[key].length > 0) {
     throw new Error(`Publicação bloqueada: ${key} contém dados operacionais embutidos.`);
   }

@@ -115,6 +115,15 @@ test("preserva instantâneos de progresso feitos por pessoas diferentes", () => 
   assert.equal(result.merged.progressSnapshots.length, 2);
 });
 
+test("preserva contatos cadastrados em computadores diferentes", () => {
+  const base = { contatos: [] };
+  const current = { contatos: [{ id: "C1", nome: "Contato A", area: "Elétrica" }] };
+  const next = { contatos: [{ id: "C2", nome: "Contato B", area: "Operação" }] };
+  const result = mergeSharedState(current, base, next);
+  assert.deepEqual(result.conflicts, []);
+  assert.equal(result.merged.contatos.length, 2);
+});
+
 test("preserva limpezas alteradas em computadores diferentes", () => {
   const base = [
     { id: "L1", status: "Concluida", progresso: 100, obs: "" },

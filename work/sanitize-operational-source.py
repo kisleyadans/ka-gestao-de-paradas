@@ -21,6 +21,7 @@ EMPTY_STATE = {
     "desbloqueios": [],
     "desbloqueioSourceVersion": "",
     "desbloqueioBaseName": "",
+    "contatos": [],
     "limpezas": [],
     "meetingPlan": [],
     "progressSnapshots": [],

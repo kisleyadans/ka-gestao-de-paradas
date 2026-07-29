@@ -16,7 +16,11 @@ Não utiliza Cloud Functions nem Secret Manager e não exige ativação do plano
 - qualquer pessoa com o link pode visualizar;
 - o botão **Administrador** solicita o nome e a senha geral `PCM2026`;
 - a conta técnica de edição é `operador@ka-paradas.app`;
-- as regras do Firestore permitem escrita somente para essa conta autenticada.
+- as regras do Firestore permitem escrita somente para essa conta autenticada;
+- vários computadores podem entrar ao mesmo tempo e editar atividades diferentes;
+- o nome informado no login é gravado como responsável pela atualização.
+
+Antes do uso em produção, troque a senha inicial no Firebase Authentication.
 
 ## Publicação manual
 

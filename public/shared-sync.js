@@ -17,7 +17,8 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 import {
   BUCKET_COUNT,
-  applyExclusiveActivityChange,
+  mergeActivityChange,
+  mergeSharedState,
   bucketId,
   buildBuckets,
   clone,
@@ -41,8 +42,6 @@ import {
   const OPERATOR_EMAIL = "operador@ka-paradas.app";
   const SAVE_DELAY = 700;
   const FAST_SAVE_DELAY = 200;
-  const EDITOR_LEASE_MS = 3 * 60 * 1000;
-  const EDITOR_HEARTBEAT_MS = 30 * 1000;
 
   const app = initializeApp(FIREBASE_CONFIG);
   const auth = getAuth(app);
@@ -52,15 +51,10 @@ import {
   });
   const stateRef = doc(db, "ka_free_state", "current");
   const bucketsRef = collection(db, "ka_free_activity_buckets");
-  const editorLockRef = doc(db, "ka_editor_lock", "current");
-  const editorPresenceRef = doc(db, "ka_editor_presence", "current");
 
   let operator = false;
   let operatorName = "";
   let editorSessionId = "";
-  let editorHeartbeatTimer = null;
-  let editorPresenceTimer = null;
-  let editorPresence = null;
   let applyingRemote = false;
   let saving = false;
   let dirty = false;
@@ -135,143 +129,30 @@ import {
     try { return sessionStorage.getItem("ka_editor_session") || ""; } catch { return ""; }
   }
 
-  function leaseIsFresh(data) {
-    const heartbeat = data?.heartbeatAt?.toMillis?.();
-    return Number.isFinite(heartbeat) && heartbeat > Date.now() - EDITOR_LEASE_MS;
-  }
-
-  function editorIsBusyForViewer() {
-    return !operator && editorPresence?.released !== true && leaseIsFresh(editorPresence);
-  }
-
   function renderEditorPresence() {
     if (operator) return;
     const button = document.getElementById("pcmAdminBtn");
-    if (editorIsBusyForViewer()) {
-      const holder = String(editorPresence?.holderName || "outro administrador").slice(0, 60);
-      setStatus(`Atualização em andamento por ${holder} · aguarde a liberação`, "pending");
-      if (button) {
-        button.dataset.editorBusy = "1";
-        button.title = `Edição em uso por ${holder}. Aguarde a pessoa clicar em Sair Admin.`;
-      }
-    } else {
-      const updatedAt = remoteStateData?.updatedAt;
-      setStatus(
-        updatedAt ? `Online · somente consulta · ${timeLabel(updatedAt)}` : "Online · somente consulta · posto de edição disponível",
-        "online",
-      );
-      if (button) {
-        button.dataset.editorBusy = "0";
-        button.title = "Posto de edição disponível";
-      }
+    const updatedAt = remoteStateData?.updatedAt;
+    setStatus(
+      updatedAt ? `Online · consulta · ${timeLabel(updatedAt)}` : "Online · consulta pública",
+      "online",
+    );
+    if (button) {
+      button.dataset.editorBusy = "0";
+      button.title = "Entrar com a conta compartilhada de edição";
     }
-  }
-
-  function editorPresenceWrite(name, released) {
-    return {
-      holderName: name || "Operador PCM",
-      released: Boolean(released),
-      heartbeatAt: serverTimestamp(),
-    };
-  }
-
-  async function acquireEditorLease(name) {
-    const candidate = createEditorSessionId();
-    await runTransaction(db, async (transaction) => {
-      const snapshot = await transaction.get(editorLockRef);
-      const current = snapshot.exists() ? snapshot.data() : null;
-      if (current && current.released !== true && current.sessionId !== candidate && leaseIsFresh(current)) {
-        const error = new Error("Outro computador jÃ¡ estÃ¡ no modo ediÃ§Ã£o");
-        error.code = "editor-lock-busy";
-        throw error;
-      }
-      transaction.set(editorLockRef, {
-        sessionId: candidate,
-        holderName: name,
-        released: false,
-        heartbeatAt: serverTimestamp(),
-        acquiredAt: serverTimestamp(),
-      });
-      transaction.set(editorPresenceRef, editorPresenceWrite(name, false));
-    });
-    editorSessionId = candidate;
-    sessionStorage.setItem("ka_editor_session", candidate);
-  }
-
-  async function renewEditorLease() {
-    const sessionId = editorSessionId || savedEditorSessionId();
-    if (!sessionId) return false;
-    return runTransaction(db, async (transaction) => {
-      const snapshot = await transaction.get(editorLockRef);
-      if (!snapshot.exists() || snapshot.data().released === true || snapshot.data().sessionId !== sessionId) return false;
-      transaction.set(editorLockRef, {
-        ...snapshot.data(),
-        sessionId,
-        holderName: operatorName || snapshot.data().holderName || "Operador PCM",
-        released: false,
-        heartbeatAt: serverTimestamp(),
-      });
-      transaction.set(
-        editorPresenceRef,
-        editorPresenceWrite(operatorName || snapshot.data().holderName || "Operador PCM", false),
-      );
-      editorSessionId = sessionId;
-      return true;
-    });
-  }
-
-  async function releaseEditorLease() {
-    const sessionId = editorSessionId || savedEditorSessionId();
-    if (!sessionId || !auth.currentUser) return;
-    try {
-      await runTransaction(db, async (transaction) => {
-        const snapshot = await transaction.get(editorLockRef);
-        if (snapshot.exists() && snapshot.data().sessionId === sessionId) {
-          transaction.set(editorLockRef, {
-            ...snapshot.data(),
-            released: true,
-            heartbeatAt: serverTimestamp(),
-          });
-          transaction.set(
-            editorPresenceRef,
-            editorPresenceWrite(snapshot.data().holderName || operatorName || "Operador PCM", true),
-          );
-        }
-      });
-    } catch (error) {
-      console.warn("NÃ£o foi possÃ­vel liberar imediatamente o posto de ediÃ§Ã£o", error);
-    }
-  }
-
-  function stopEditorHeartbeat() {
-    if (editorHeartbeatTimer) clearInterval(editorHeartbeatTimer);
-    editorHeartbeatTimer = null;
   }
 
   async function forceConsultationMode(message) {
     if (message) setStatus(message, "error");
     operator = false;
     editorSessionId = "";
-    stopEditorHeartbeat();
     try {
       sessionStorage.removeItem("ka_editor_session");
       sessionStorage.setItem("pcm_admin", "0");
     } catch {}
     try { await signOut(auth); } catch {}
     window.location.reload();
-  }
-
-  function startEditorHeartbeat() {
-    stopEditorHeartbeat();
-    editorHeartbeatTimer = setInterval(async () => {
-      if (!operator) return;
-      try {
-        const active = await renewEditorLease();
-        if (!active) await forceConsultationMode("EdiÃ§Ã£o ativa em outro computador Â· modo consulta");
-      } catch (error) {
-        console.warn("ValidaÃ§Ã£o do posto de ediÃ§Ã£o falhou", error);
-      }
-    }, EDITOR_HEARTBEAT_MS);
   }
 
   function buildState() {
@@ -287,6 +168,7 @@ import {
           refTime: document.getElementById("refTime")?.value || "",
         };
     state.exportedAt = new Date().toISOString();
+    state.contatos = typeof window.pcmGetContatos === "function" ? window.pcmGetContatos() : [];
     return state;
   }
 
@@ -297,6 +179,7 @@ import {
       localStorage.setItem("painel_parada_limpezas", JSON.stringify(state.limpezas || []));
       localStorage.setItem("meetingPlan", JSON.stringify(state.meetingPlan || []));
       localStorage.setItem("pcmProgressSnapshots", JSON.stringify(state.progressSnapshots || []));
+      localStorage.setItem("pcm_contatos_v1", JSON.stringify(state.contatos || []));
       if (typeof state.desbloqueioBaseName === "string") {
         localStorage.setItem("painel_parada_desbloqueios_nome", state.desbloqueioBaseName);
       }
@@ -314,6 +197,9 @@ import {
     if (Array.isArray(state.progressSnapshots)) window.pcmProgressSnapshots = clone(state.progressSnapshots);
     if (Array.isArray(state.desbloqueios) && typeof window.pcmSetDesbloqueios === "function") {
       window.pcmSetDesbloqueios(clone(state.desbloqueios), state.desbloqueioBaseName || "Base online compartilhada");
+    }
+    if (Array.isArray(state.contatos) && typeof window.pcmSetContatos === "function") {
+      window.pcmSetContatos(clone(state.contatos));
     }
     const referenceTime = document.getElementById("refTime");
     if (referenceTime && typeof state.refTime === "string") referenceTime.value = state.refTime;
@@ -393,9 +279,8 @@ import {
       lastRemoteSignature = assembled.signature;
     }
     pendingRemote = false;
-    const mode = operator ? `${operatorName} · edição exclusiva` : "somente consulta";
-    if (editorIsBusyForViewer()) renderEditorPresence();
-    else setStatus(`Online · ${mode} · ${timeLabel(remoteStateData.updatedAt)}`, "online");
+    const mode = operator ? `${operatorName} · edição compartilhada` : "somente consulta";
+    setStatus(`Online · ${mode} · ${timeLabel(remoteStateData.updatedAt)}`, "online");
   }
 
   async function initializeRemote() {
@@ -537,7 +422,7 @@ import {
         grouped.get(id).forEach((change) => {
           const index = entries.findIndex((entry) => entry.id === change.id);
           const currentEntry = index >= 0 ? entries[index] : null;
-          const result = applyExclusiveActivityChange(currentEntry, change);
+          const result = mergeActivityChange(currentEntry, change);
           if (!result.accepted) {
             conflicts.push({ id: change.id, fields: result.fields || [], current: result.current || currentEntry });
             return;
@@ -575,16 +460,23 @@ import {
       const snapshot = await transaction.get(stateRef);
       if (!snapshot.exists()) throw new Error("A base online ainda não foi criada");
       const data = snapshot.data();
+      const onlineShared = sharedPart(data.baseState);
+      const merged = mergeSharedState(
+        onlineShared,
+        baselineSharedState || onlineShared,
+        currentShared,
+      );
+      if (merged.conflicts.length > 0) return { conflicts: merged.conflicts };
       transaction.set(stateRef, {
         ...data,
-        baseState: sharedPart(currentShared),
+        baseState: merged.merged,
         bucketCount: BUCKET_COUNT,
         revision: Number(data.revision || 0) + 1,
         updatedAt: serverTimestamp(),
         updatedBy: operatorName,
         editorSessionId,
       });
-      return { conflicts: [] };
+      return { conflicts: merged.conflicts };
     });
   }
 
@@ -622,7 +514,7 @@ import {
       const denied = error?.code === "permission-denied";
       if (denied) {
         dirty = false;
-        setStatus("Posto de edição ativo em outro computador · entrando em consulta", "error");
+        setStatus("Sessão de edição sem permissão · entrando em consulta", "error");
         setTimeout(() => forceConsultationMode(), 700);
       } else {
         setStatus("Falha ao sincronizar · tentando novamente", "error");
@@ -693,11 +585,6 @@ import {
   }
 
   async function login() {
-    if (editorIsBusyForViewer()) {
-      const holder = String(editorPresence?.holderName || "outro administrador").slice(0, 60);
-      window.alert(`ATUALIZAÇÃO EM ANDAMENTO POR ${holder}.\n\nAguarde a pessoa clicar em “Sair Admin”. Este computador continuará somente para consulta e não permitirá importar ou alterar dados.`);
-      return;
-    }
     let rememberedName = "";
     try { rememberedName = localStorage.getItem("ka_operator_name") || ""; } catch {}
     const name = window.prompt("Digite seu nome para registrar as atualizações:", rememberedName);
@@ -706,41 +593,33 @@ import {
       window.alert("Informe seu nome para continuar.");
       return;
     }
-    const password = window.prompt("Digite a senha geral para liberar as atualizações:");
+    const password = window.prompt("Senha compartilhada do editor (teste):", "PCM2026");
     if (password === null) return;
-    setStatus("Reservando o posto único de edição...", "pending");
-    let signedIn = false;
+    setStatus("Validando acesso de edição...", "pending");
     try {
       await setPersistence(auth, browserLocalPersistence);
       await signInWithEmailAndPassword(auth, OPERATOR_EMAIL, password);
-      signedIn = true;
       const cleanName = name.trim().slice(0, 60);
-      await acquireEditorLease(cleanName);
+      editorSessionId = createEditorSessionId();
+      sessionStorage.setItem("ka_editor_session", editorSessionId);
       localStorage.setItem("ka_operator_name", cleanName);
       sessionStorage.setItem("pcm_admin", "1");
-      window.alert(`Acesso liberado para ${cleanName}. Este computador é o único posto de edição.`);
+      window.alert(`Acesso liberado para ${cleanName}. Vários computadores podem editar atividades diferentes ao mesmo tempo.`);
       window.location.reload();
     } catch (error) {
       console.error("Operator login failed", error);
-      if (signedIn) try { await signOut(auth); } catch {}
+      try { await signOut(auth); } catch {}
       try {
         sessionStorage.removeItem("ka_editor_session");
         sessionStorage.setItem("pcm_admin", "0");
       } catch {}
-      if (error?.code === "editor-lock-busy" || error?.code === "permission-denied") {
-        setStatus("Edição já ativa em outro computador", "error");
-        window.alert("Outro computador já está no modo administrador. Este permanecerá somente para consulta.");
-      } else {
-        setStatus("Senha incorreta ou acesso indisponível", "error");
-        window.alert("Senha incorreta. Verifique e tente novamente.");
-      }
+      setStatus("Senha incorreta ou acesso indisponível", "error");
+      window.alert("Senha incorreta. Verifique e tente novamente.");
     }
   }
 
   async function logout() {
     try {
-      stopEditorHeartbeat();
-      await releaseEditorLease();
       await signOut(auth);
     } finally {
       editorSessionId = "";
@@ -785,15 +664,7 @@ import {
       setStatus("Sem conexão com as atividades online", "error");
     });
 
-    onSnapshot(editorPresenceRef, (snapshot) => {
-      editorPresence = snapshot.exists() ? snapshot.data() : null;
-      renderEditorPresence();
-    }, (error) => {
-      console.warn("Não foi possível consultar a disponibilidade do administrador", error);
-    });
-
-    if (editorPresenceTimer) clearInterval(editorPresenceTimer);
-    editorPresenceTimer = setInterval(renderEditorPresence, 15 * 1000);
+    renderEditorPresence();
   }
 
   async function boot() {
@@ -802,6 +673,7 @@ import {
     window.pcmLogout = logout;
     window.kaClearSharedActivities = clearSharedActivities;
     window.kaSaveSharedNow = flushSharedChanges;
+    window.kaScheduleSharedSave = scheduleSave;
     const user = await waitForAuth();
     operator = user?.email === OPERATOR_EMAIL;
     try { operatorName = operator ? (localStorage.getItem("ka_operator_name") || "Operador PCM") : ""; } catch {
@@ -810,16 +682,9 @@ import {
 
     if (operator) {
       editorSessionId = savedEditorSessionId();
-      try {
-        operator = Boolean(editorSessionId) && await renewEditorLease();
-      } catch (error) {
-        console.warn("Não foi possível validar o posto único de edição", error);
-        operator = false;
-      }
-      if (!operator) {
-        editorSessionId = "";
-        try { sessionStorage.removeItem("ka_editor_session"); } catch {}
-        try { await signOut(auth); } catch {}
+      if (!editorSessionId) {
+        editorSessionId = createEditorSessionId();
+        try { sessionStorage.setItem("ka_editor_session", editorSessionId); } catch {}
       }
     }
 
@@ -833,7 +698,6 @@ import {
 
     installSaveHooks();
     startRealtimeSync();
-    if (operator) startEditorHeartbeat();
   }
 
   boot();
