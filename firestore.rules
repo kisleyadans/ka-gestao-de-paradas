@@ -17,13 +17,13 @@ service cloud.firestore {
 
     // Dashboard e Curva S permanecem públicos. A mesma conta de editor pode
     // ser usada em vários computadores; conflitos são resolvidos por atividade.
-    match /ka_free_state/{document} {
+    match /ka_free_state_v2/{document} {
       allow read: if true;
       allow create, update: if isSharedEditor() && hasAuditMetadata();
       allow delete: if false;
     }
 
-    match /ka_free_activity_buckets/{document} {
+    match /ka_free_activity_buckets_v2/{document} {
       allow read: if true;
       allow create, update: if isSharedEditor() && hasAuditMetadata();
       allow delete: if false;

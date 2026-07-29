@@ -80,10 +80,13 @@ await Promise.all([
 const checks = [
   [html.includes('src="/shared-sync.js"'), "sincronização online"],
   [html.includes("ka-firebase-shell"), "visual de aplicativo"],
+  [!/<html[^>]*data-ka-offline-ready/i.test(html), "inicialização do menu móvel"],
+  [html.includes("ka_project_database_generation"), "limpeza única do cache da parada anterior"],
   [html.includes("importDesbloqueiosCSV"), "importação de desbloqueios"],
   [html.includes("clearDesbloqueiosBase"), "limpeza de desbloqueios"],
   [syncScript.includes("signInWithEmailAndPassword"), "autenticação gratuita"],
   [syncScript.includes("runTransaction"), "sincronização concorrente"],
+  [syncScript.includes("ka_free_state_v2"), "base vazia da nova parada"],
   [syncScript.includes("desbloqueioBaseName"), "nome da base compartilhada"],
 ];
 for (const [ok, label] of checks) {

@@ -49,8 +49,10 @@ import {
     experimentalAutoDetectLongPolling: true,
     ignoreUndefinedProperties: true,
   });
-  const stateRef = doc(db, "ka_free_state", "current");
-  const bucketsRef = collection(db, "ka_free_activity_buckets");
+  // A base v2 começa vazia para a nova parada. As coleções antigas permanecem
+  // intactas no Firestore como histórico e não são carregadas por esta versão.
+  const stateRef = doc(db, "ka_free_state_v2", "current");
+  const bucketsRef = collection(db, "ka_free_activity_buckets_v2");
 
   let operator = false;
   let operatorName = "";

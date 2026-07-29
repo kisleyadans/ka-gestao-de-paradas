@@ -20,6 +20,10 @@ Não utiliza Cloud Functions nem Secret Manager e não exige ativação do plano
 - vários computadores podem entrar ao mesmo tempo e editar atividades diferentes;
 - o nome informado no login é gravado como responsável pela atualização.
 
+A nova parada usa as coleções `ka_free_state_v2` e
+`ka_free_activity_buckets_v2`, inicialmente vazias. Os dados das coleções
+anteriores são preservados, mas não aparecem nesta versão do aplicativo.
+
 Antes do uso em produção, troque a senha inicial no Firebase Authentication.
 
 ## Publicação manual

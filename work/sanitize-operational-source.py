@@ -81,6 +81,16 @@ document = html.document_fromstring(
     parser=html.HTMLParser(encoding="utf-8", remove_comments=False),
 )
 
+# A cópia salva pelo navegador pode registrar o shell como já inicializado.
+# Esse marcador impediria a instalação dos eventos do menu em uma nova carga.
+document.attrib.pop("data-ka-offline-ready", None)
+root_classes = (document.get("class") or "").split()
+remaining_root_classes = [item for item in root_classes if item != "ka-app-shell"]
+if remaining_root_classes:
+    document.set("class", " ".join(remaining_root_classes))
+else:
+    document.attrib.pop("class", None)
+
 embedded = document.get_element_by_id("dadosEmbutidos")
 embedded.text = json.dumps(EMPTY_STATE, ensure_ascii=False, indent=2).replace(
     "</script", "<\\/script"

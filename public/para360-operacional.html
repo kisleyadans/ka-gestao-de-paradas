@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR" data-ka-offline-ready="true" class="ka-app-shell"><!-- SharePoint JSON (banco.json) - PCM Itabira - Dev. Kisley Ferreira --><head>
+<html lang="pt-BR"><!-- SharePoint JSON (banco.json) - PCM Itabira - Dev. Kisley Ferreira --><head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -3205,6 +3205,35 @@
         @media print{.ka-shared-status{display:none!important}}
       </style></head>
 <body class="ka-app-layout ka-firebase-mode"><button type="button" class="ka-activity-editor-overlay" aria-label="Fechar cadastro de atividade"></button><button type="button" class="ka-menu-overlay" aria-label="Fechar menu principal"></button><button type="button" class="ka-menu-toggle" aria-label="Abrir menu principal" aria-expanded="false"><span aria-hidden="true"></span><span aria-hidden="true"></span><span aria-hidden="true"></span></button><div class="ka-mobile-title"><strong>K.A</strong><span>Gestão de Paradas</span></div>
+<script id="ka-blank-project-v2">
+(function(){
+  var generationKey = 'ka_project_database_generation';
+  var generation = 'blank-v2';
+  try {
+    if (localStorage.getItem(generationKey) === generation) return;
+    var emptyArrayKeys = [
+      'painel_parada_atividades',
+      'painel_parada_bloqueios',
+      'painel_parada_limpezas',
+      'meetingPlan',
+      'pcm_contatos_v1',
+      'pcm_progress_snapshots_v2',
+      'painel_parada_desbloqueios'
+    ];
+    emptyArrayKeys.forEach(function(key){ localStorage.setItem(key, '[]'); });
+    localStorage.setItem('painel_parada_refTime', '');
+    localStorage.setItem('painel_parada_desbloqueios_initialized', '1');
+    localStorage.setItem('painel_parada_desbloqueios_nome', '');
+    localStorage.setItem('pcm_embedded_version', generation);
+    ['painelFilters','lastSaved','painel_parada_desbloqueios_version'].forEach(function(key){
+      localStorage.removeItem(key);
+    });
+    localStorage.setItem(generationKey, generation);
+  } catch (error) {
+    console.warn('Não foi possível preparar a base local vazia:', error);
+  }
+})();
+</script>
 <script id="pcm-initial-access-mode">
 (function(){
   var initialAdmin = false;
@@ -11058,24 +11087,33 @@ setInterval(function(){ try{ updateHeaderTimestamp(); }catch(e){} }, 30000);
     tabs.prepend(navTitle);
   }
 
-  const mobileTitle = document.createElement("div");
-  mobileTitle.className = "ka-mobile-title";
-  mobileTitle.innerHTML = "<strong>K.A</strong><span>Gestão de Paradas</span>";
-  document.body.prepend(mobileTitle);
+  let mobileTitle = document.querySelector(".ka-mobile-title");
+  if (!mobileTitle) {
+    mobileTitle = document.createElement("div");
+    mobileTitle.className = "ka-mobile-title";
+    mobileTitle.innerHTML = "<strong>K.A</strong><span>Gestão de Paradas</span>";
+    document.body.prepend(mobileTitle);
+  }
 
-  const menuButton = document.createElement("button");
-  menuButton.type = "button";
-  menuButton.className = "ka-menu-toggle";
+  let menuButton = document.querySelector(".ka-menu-toggle");
+  if (!menuButton) {
+    menuButton = document.createElement("button");
+    menuButton.type = "button";
+    menuButton.className = "ka-menu-toggle";
+    menuButton.innerHTML = '<span aria-hidden="true"></span><span aria-hidden="true"></span><span aria-hidden="true"></span>';
+    document.body.prepend(menuButton);
+  }
   menuButton.setAttribute("aria-label", "Abrir menu principal");
   menuButton.setAttribute("aria-expanded", "false");
-  menuButton.innerHTML = '<span aria-hidden="true"></span><span aria-hidden="true"></span><span aria-hidden="true"></span>';
-  document.body.prepend(menuButton);
 
-  const menuOverlay = document.createElement("button");
-  menuOverlay.type = "button";
-  menuOverlay.className = "ka-menu-overlay";
-  menuOverlay.setAttribute("aria-label", "Fechar menu principal");
-  document.body.prepend(menuOverlay);
+  let menuOverlay = document.querySelector(".ka-menu-overlay");
+  if (!menuOverlay) {
+    menuOverlay = document.createElement("button");
+    menuOverlay.type = "button";
+    menuOverlay.className = "ka-menu-overlay";
+    menuOverlay.setAttribute("aria-label", "Fechar menu principal");
+    document.body.prepend(menuOverlay);
+  }
 
   const closeMenu = function () {
     document.body.classList.remove("ka-menu-open");

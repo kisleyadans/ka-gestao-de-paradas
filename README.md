@@ -44,6 +44,10 @@ O site estático é publicado pelo GitHub Pages quando a branch `main` é atuali
 O Firebase permanece responsável apenas por Authentication, Firestore, regras e
 índices. O workflow do Firebase não publica mais o Hosting.
 
+Esta versão inicia a nova parada nas coleções `ka_free_state_v2` e
+`ka_free_activity_buckets_v2`. As coleções anteriores não são carregadas nem
+apagadas e permanecem no Firestore como histórico.
+
 Antes da primeira publicação:
 
 1. Em **Settings > Pages**, escolha **GitHub Actions** como origem.

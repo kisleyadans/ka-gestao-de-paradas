@@ -71,24 +71,33 @@
     tabs.prepend(navTitle);
   }
 
-  const mobileTitle = document.createElement("div");
-  mobileTitle.className = "ka-mobile-title";
-  mobileTitle.innerHTML = "<strong>K.A</strong><span>Gestão de Paradas</span>";
-  document.body.prepend(mobileTitle);
+  let mobileTitle = document.querySelector(".ka-mobile-title");
+  if (!mobileTitle) {
+    mobileTitle = document.createElement("div");
+    mobileTitle.className = "ka-mobile-title";
+    mobileTitle.innerHTML = "<strong>K.A</strong><span>Gestão de Paradas</span>";
+    document.body.prepend(mobileTitle);
+  }
 
-  const menuButton = document.createElement("button");
-  menuButton.type = "button";
-  menuButton.className = "ka-menu-toggle";
+  let menuButton = document.querySelector(".ka-menu-toggle");
+  if (!menuButton) {
+    menuButton = document.createElement("button");
+    menuButton.type = "button";
+    menuButton.className = "ka-menu-toggle";
+    menuButton.innerHTML = '<span aria-hidden="true"></span><span aria-hidden="true"></span><span aria-hidden="true"></span>';
+    document.body.prepend(menuButton);
+  }
   menuButton.setAttribute("aria-label", "Abrir menu principal");
   menuButton.setAttribute("aria-expanded", "false");
-  menuButton.innerHTML = '<span aria-hidden="true"></span><span aria-hidden="true"></span><span aria-hidden="true"></span>';
-  document.body.prepend(menuButton);
 
-  const menuOverlay = document.createElement("button");
-  menuOverlay.type = "button";
-  menuOverlay.className = "ka-menu-overlay";
-  menuOverlay.setAttribute("aria-label", "Fechar menu principal");
-  document.body.prepend(menuOverlay);
+  let menuOverlay = document.querySelector(".ka-menu-overlay");
+  if (!menuOverlay) {
+    menuOverlay = document.createElement("button");
+    menuOverlay.type = "button";
+    menuOverlay.className = "ka-menu-overlay";
+    menuOverlay.setAttribute("aria-label", "Fechar menu principal");
+    document.body.prepend(menuOverlay);
+  }
 
   const closeMenu = function () {
     document.body.classList.remove("ka-menu-open");

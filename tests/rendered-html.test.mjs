@@ -28,7 +28,11 @@ test("inclui a sincronização gratuita e concorrente no painel publicado", asyn
 
   assert.match(panel, /<script[^>]*src="\/shared-sync\.js"[^>]*><\/script>/i);
   assert.match(panel, /<script id="pcm-initial-access-mode">/i);
+  assert.match(panel, /<script id="ka-blank-project-v2">/i);
+  assert.match(panel, /ka_project_database_generation/);
   assert.match(panel, /<body(?![^>]*\badmin-mode\b)[^>]*>/i);
+  assert.doesNotMatch(panel, /<html[^>]*data-ka-offline-ready/i);
+  assert.match(panel, /let menuButton = document\.querySelector\("\.ka-menu-toggle"\)/);
   assert.match(panel, /body:not\(\.admin-mode\) \.toolbar\{display:none !important\}/i);
   assert.match(panel, /<section id="view-dashboard" class="view(?: active)?">/i);
   assert.match(panel, /<section id="view-avanco" class="view">/i);
@@ -49,7 +53,8 @@ test("inclui a sincronização gratuita e concorrente no painel publicado", asyn
   assert.match(rules, /hasAuditMetadata/);
   assert.match(sync, /kaClearSharedActivities/);
   assert.match(sync, /entries: \[\]/);
-  assert.match(sync, /ka_free_activity_buckets/);
+  assert.match(sync, /ka_free_state_v2/);
+  assert.match(sync, /ka_free_activity_buckets_v2/);
   assert.match(sync, /ka_operator_name/);
   assert.match(sync, /pcmGetContatos/);
   assert.match(sync, /Senha compartilhada do editor/i);
