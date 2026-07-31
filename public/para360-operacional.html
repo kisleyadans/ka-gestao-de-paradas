@@ -3691,6 +3691,16 @@
             <label style="font-size:11px;font-weight:700;color:#40506A">Buscar atividade</label>
             <input id="avBusca" type="search" placeholder="Equipamento, atividade, responsável..." oninput="avRender()">
           </div>
+          <div style="flex:1;min-width:180px">
+            <label style="font-size:11px;font-weight:700;color:#40506A">Equipamento</label>
+            <input id="avEquipamento" type="search" placeholder="Pesquisar equipamento..." oninput="avRender()">
+          </div>
+          <div style="min-width:170px">
+            <label style="font-size:11px;font-weight:700;color:#40506A">&Aacute;rea</label>
+            <select id="avArea" onchange="avRender()">
+              <option value="all">Todas as &aacute;reas</option>
+            </select>
+          </div>
           <div>
             <label style="font-size:11px;font-weight:700;color:#40506A">Situação</label>
             <select id="avFiltro" onchange="avRender()">
@@ -8424,12 +8434,29 @@ body.admin-mode .admin-bar{border-color:#C7E6D3;background:#F5FAF7}
   }
 
   // === Renderização da lista ===
+  function avPopularFiltroArea(){
+    const select = document.getElementById('avArea');
+    if(!select) return;
+    const atual = select.value || 'all';
+    const areas = Array.from(new Set(atividadesDaSup().map(a=>String(a.area||'').trim()).filter(Boolean)))
+      .sort((a,b)=>a.localeCompare(b,'pt-BR'));
+    select.innerHTML = '<option value="all">Todas as &aacute;reas</option>'
+      + areas.map(area=>'<option value="'+esc(area)+'">'+esc(area)+'</option>').join('');
+    select.value = areas.includes(atual) ? atual : 'all';
+  }
+
   window.avRender = function(){
     const cont = document.getElementById('avancoLista');
     const meta = document.getElementById('avMeta');
     if(!cont) return;
     let lista = atividadesDaSup();
     const busca = (document.getElementById('avBusca').value||'').toLowerCase().trim();
+    const equipamento = (document.getElementById('avEquipamento')?.value||'').toLowerCase().trim();
+    const area = document.getElementById('avArea')?.value || 'all';
+    if(equipamento) lista = lista.filter(a=>
+      String(a.equipamento||'').toLowerCase().includes(equipamento)
+    );
+    if(area!=='all') lista = lista.filter(a=>String(a.area||'')===area);
     const filtro = document.getElementById('avFiltro').value;
     if(busca) lista = lista.filter(a=>
       String(a.equipamento||'').toLowerCase().includes(busca) ||
@@ -8594,6 +8621,7 @@ body.admin-mode .admin-bar{border-color:#C7E6D3;background:#F5FAF7}
       document.getElementById('avUserAvatar').textContent = supAtual.icone || '👤';
       document.getElementById('avUserNome').textContent = supAtual.nome;
       document.getElementById('avUserDisciplinas').textContent = 'Disciplinas: ' + (supAtual.disciplinas||[]).join(', ');
+      avPopularFiltroArea();
       renderStats();
       avRender();
     } else {
