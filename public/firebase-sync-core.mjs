@@ -136,7 +136,12 @@ export function mergeActivityChange(currentEntry, change) {
   // O carimbo muda em toda edição. Duas gravações rápidas do mesmo operador
   // podem ter carimbos diferentes antes de o retorno online atualizar a base
   // local; isso não é um conflito de negócio e deve seguir a última edição.
-  const lastWriteWinsFields = new Set(["ultimaAtualizacao"]);
+  const lastWriteWinsFields = new Set([
+    "ultimaAtualizacao",
+    "updatedAt",
+    "updatedBy",
+    "editorSessionId",
+  ]);
   const overlapping = fields.filter((field) => (
     !lastWriteWinsFields.has(field)
     && !same(current[field], base?.[field])
@@ -231,7 +236,12 @@ export function mergeKeyedCollection(currentValue, baseValue, nextValue) {
 
     if (baseItem && currentItem && nextItem) {
       const fields = changedFields(baseItem, nextItem);
-      const lastWriteWinsFields = new Set(["ultimaAtualizacao"]);
+      const lastWriteWinsFields = new Set([
+        "ultimaAtualizacao",
+        "updatedAt",
+        "updatedBy",
+        "editorSessionId",
+      ]);
       const overlapping = fields.filter((field) => (
         !lastWriteWinsFields.has(field)
         && !same(currentItem[field], baseItem[field])

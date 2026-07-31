@@ -17,6 +17,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 import {
   BUCKET_COUNT,
+  applyExclusiveActivityChange,
   mergeActivityChange,
   mergeSharedState,
   bucketId,
@@ -447,7 +448,16 @@ import {
         grouped.get(id).forEach((change) => {
           const index = entries.findIndex((entry) => entry.id === change.id);
           const currentEntry = index >= 0 ? entries[index] : null;
-          const result = mergeActivityChange(currentEntry, change);
+          // A second write from this same tab may arrive before the realtime
+          // listener refreshes the local baseline. In that case, the newest
+          // change from the same session wins. Other sessions still use the
+          // field-level merge and retain genuine conflict protection.
+          const sameEditorSession = Boolean(
+            editorSessionId && data.editorSessionId === editorSessionId,
+          );
+          const result = sameEditorSession
+            ? applyExclusiveActivityChange(currentEntry, change)
+            : mergeActivityChange(currentEntry, change);
           if (!result.accepted) {
             conflicts.push({ id: change.id, fields: result.fields || [], current: result.current || currentEntry });
             return;
@@ -486,11 +496,16 @@ import {
       if (!snapshot.exists()) throw new Error("A base online ainda não foi criada");
       const data = snapshot.data();
       const onlineShared = sharedPart(data.baseState);
-      const merged = mergeSharedState(
-        onlineShared,
-        baselineSharedState || onlineShared,
-        currentShared,
+      const sameEditorSession = Boolean(
+        editorSessionId && data.editorSessionId === editorSessionId,
       );
+      const merged = sameEditorSession
+        ? { merged: currentShared, conflicts: [] }
+        : mergeSharedState(
+            onlineShared,
+            baselineSharedState || onlineShared,
+            currentShared,
+          );
       if (merged.conflicts.length > 0) return { conflicts: merged.conflicts };
       transaction.set(stateRef, {
         ...data,
