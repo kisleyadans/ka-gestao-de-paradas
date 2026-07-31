@@ -3282,7 +3282,7 @@
     <button class="tab" onclick="showTab('avanco', this)"><span class="ka-nav-icon" aria-hidden="true">📈</span><span class="ka-nav-label">Avanço</span></button>
     <button class="tab" onclick="showTab('contatos', this)"><span class="ka-nav-icon" aria-hidden="true">☏</span><span class="ka-nav-label">Contatos</span></button>
     <button class="tab" onclick="showTab('report', this)"><span class="ka-nav-icon" aria-hidden="true">▤</span><span class="ka-nav-label">Relatório da Parada</span></button>
-  </div><div id="pcmAdminBar" class="admin-bar" title="Este bloqueio evita alterações acidentais. A segurança de acesso deve ser controlada pelas permissões do SharePoint/servidor."><span class="admin-state" id="pcmAdminState">🔒 Modo consulta</span><span id="kaSharedStatus" class="ka-shared-status">Conectando ao Firebase...</span><button class="btn-login" id="pcmAdminBtn" onclick="pcmLogin()">🔐 Administrador</button><button class="btn-logout" id="pcmLogoutBtn" onclick="pcmLogout()" style="display:none">🚪 Sair Admin</button></div>
+  </div><div id="pcmAdminBar" class="admin-bar" title="Este bloqueio evita alterações acidentais. A segurança de acesso deve ser controlada pelas permissões do SharePoint/servidor."><span class="admin-state" id="pcmAdminState">🔒 Modo consulta</span><span id="kaSharedStatus" class="ka-shared-status">Conectando ao Firebase...</span><button class="btn-login" id="pcmAdminBtn" onclick="pcmLogin()">🔐 Administrador</button><button class="btn-login admin-hide" id="pcmDashboardPdfBtn" onclick="generateDashboardPdf()" title="Preparar o Dashboard completo para salvar como PDF">📄 PDF Dashboard</button><button class="btn-logout" id="pcmLogoutBtn" onclick="pcmLogout()" style="display:none">🚪 Sair Admin</button></div>
 
   <div class="card" id="filtersCard">
     <div class="section-title">
@@ -9177,7 +9177,11 @@ setInterval(function(){ try{ updateHeaderTimestamp(); }catch(e){} }, 30000);
       plannedEquivalent=new Date((lo+hi)/2);
     }
 
-    const shiftMs=now.getTime()-plannedEquivalent.getTime();
+    // Antes do início, 0% representa uma parada ainda não iniciada, não uma
+    // antecipação. Adiantamentos continuam permitidos quando já existe avanço.
+    const shiftMs=currentReal<=0&&now<=minD
+      ? 0
+      : now.getTime()-plannedEquivalent.getTime();
     const projectedEnd=new Date(plannedEnd.getTime()+shiftMs);
     return {valid,now,minD,plannedEnd,plannedEquivalent,projectedEnd,shiftMs,total,currentEarned,currentReal,plannedAt};
   }
@@ -11289,6 +11293,8 @@ setInterval(function(){ try{ updateHeaderTimestamp(); }catch(e){} }, 30000);
       // Se ainda não existe, tenta de novo em 200ms
       return setTimeout(run, 200);
     }
+    if(window.__kaDesktopSidebarToggleBound) return;
+    window.__kaDesktopSidebarToggleBound = true;
 
     function isDesktop(){ return window.innerWidth > 920; }
 
@@ -11339,6 +11345,148 @@ setInterval(function(){ try{ updateHeaderTimestamp(); }catch(e){} }, 30000);
   }
   // Fallback extra: garante execução após todos os outros scripts
   window.addEventListener("load", function(){ setTimeout(run, 300); });
+})();
+</script>
+
+<style id="ka-dashboard-pdf-style">
+@media print {
+  @page { size: A4 landscape; margin: 8mm; }
+  body.ka-dashboard-pdf,
+  body.ka-dashboard-pdf .wrap,
+  body.ka-dashboard-pdf #view-dashboard {
+    background: #fff !important;
+    color: #17211d !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    width: 100% !important;
+  }
+  body.ka-dashboard-pdf > header,
+  body.ka-dashboard-pdf > .ka-menu-toggle,
+  body.ka-dashboard-pdf > .ka-menu-overlay,
+  body.ka-dashboard-pdf > .ka-mobile-title,
+  body.ka-dashboard-pdf > .ka-sidebar-footer,
+  body.ka-dashboard-pdf .toolbar,
+  body.ka-dashboard-pdf .tabs,
+  body.ka-dashboard-pdf #pcmAdminBar,
+  body.ka-dashboard-pdf #filtersCard,
+  body.ka-dashboard-pdf .view:not(#view-dashboard),
+  body.ka-dashboard-pdf #saveToast {
+    display: none !important;
+  }
+  body.ka-dashboard-pdf > .wrap {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  body.ka-dashboard-pdf #view-dashboard {
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  body.ka-dashboard-pdf #view-dashboard *,
+  body.ka-dashboard-pdf #view-dashboard *::before,
+  body.ka-dashboard-pdf #view-dashboard *::after {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  body.ka-dashboard-pdf #view-dashboard .cc-dashboard {
+    margin: 0 !important;
+    max-width: none !important;
+    padding: 0 !important;
+    width: 100% !important;
+  }
+  body.ka-dashboard-pdf #view-dashboard .cc-command-header,
+  body.ka-dashboard-pdf #view-dashboard .cc-hero-grid,
+  body.ka-dashboard-pdf #view-dashboard .control-kpis,
+  body.ka-dashboard-pdf #view-dashboard .op-ribbon,
+  body.ka-dashboard-pdf #view-dashboard .control-card,
+  body.ka-dashboard-pdf #view-dashboard .cc-details {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  body.ka-dashboard-pdf #view-dashboard .cc-hero-grid {
+    grid-template-columns: 1.55fr .8fr 1.15fr !important;
+  }
+  body.ka-dashboard-pdf #view-dashboard .cc-performance-grid {
+    grid-template-columns: 1.7fr 1fr !important;
+  }
+  body.ka-dashboard-pdf #view-dashboard .cc-control-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+  body.ka-dashboard-pdf #view-dashboard .cc-management-grid {
+    grid-template-columns: 1.25fr 1fr !important;
+  }
+  body.ka-dashboard-pdf #view-dashboard .cc-section-heading,
+  body.ka-dashboard-pdf #view-dashboard .cc-details {
+    break-before: page;
+    page-break-before: always;
+  }
+  body.ka-dashboard-pdf #view-dashboard svg {
+    height: auto !important;
+    max-height: 150mm !important;
+    width: 100% !important;
+  }
+  body.ka-dashboard-pdf #view-dashboard details > * {
+    display: block !important;
+  }
+}
+</style>
+<script id="ka-dashboard-pdf-export">
+(function(){
+  'use strict';
+  window.generateDashboardPdf = function(){
+    if(!document.body.classList.contains('admin-mode')){
+      alert('Entre como administrador para gerar o PDF do Dashboard.');
+      return;
+    }
+    if(document.body.classList.contains('ka-dashboard-pdf')) return;
+
+    var active=document.querySelector('.view.active');
+    var previousView=active?active.id.replace('view-',''):'dashboard';
+    var fields=['fDisciplina','fArea','fEquipamento','fStatus'];
+    var previousFilters={};
+    fields.forEach(function(id){
+      var field=document.getElementById(id);
+      if(field){previousFilters[id]=field.value;field.value='';}
+    });
+    var details=Array.from(document.querySelectorAll('#view-dashboard details'));
+    var previousDetails=details.map(function(item){return item.open;});
+    details.forEach(function(item){item.open=true;});
+    var previousTitle=document.title;
+    var stamp=new Date();
+    var fileStamp=stamp.toISOString().slice(0,16).replace(/[:T]/g,'-');
+    document.title='Dashboard_Parada_'+fileStamp;
+    document.body.classList.add('ka-dashboard-pdf');
+
+    var dashboardButton=Array.from(document.querySelectorAll('.tabs .tab')).find(function(button){
+      return (button.getAttribute('onclick')||'').indexOf("showTab('dashboard'")>=0;
+    });
+    if(typeof window.showTab==='function') window.showTab('dashboard',dashboardButton||null);
+    if(typeof window.renderAll==='function') window.renderAll();
+
+    var restored=false;
+    function restore(){
+      if(restored) return;
+      restored=true;
+      document.body.classList.remove('ka-dashboard-pdf');
+      document.title=previousTitle;
+      fields.forEach(function(id){
+        var field=document.getElementById(id);
+        if(field&&Object.prototype.hasOwnProperty.call(previousFilters,id)) field.value=previousFilters[id];
+      });
+      details.forEach(function(item,index){item.open=previousDetails[index];});
+      var previousButton=Array.from(document.querySelectorAll('.tabs .tab')).find(function(button){
+        return (button.getAttribute('onclick')||'').indexOf("showTab('"+previousView+"'")>=0;
+      });
+      if(typeof window.showTab==='function') window.showTab(previousView,previousButton||null);
+      if(typeof window.renderAll==='function') window.renderAll();
+      window.removeEventListener('afterprint',restore);
+    }
+    window.addEventListener('afterprint',restore);
+    window.setTimeout(function(){
+      try{window.print();}catch(error){restore();alert('Não foi possível abrir a impressão do Dashboard.');}
+    },350);
+  };
 })();
 </script>
 </body></html>

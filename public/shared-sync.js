@@ -215,6 +215,10 @@ import {
     const embedded = document.getElementById("dadosEmbutidos");
     if (embedded) embedded.textContent = JSON.stringify(state);
     backupStateLocally(state);
+    const saveInfo = document.getElementById("saveInfo");
+    if (saveInfo) saveInfo.textContent = `Base online sincronizada às ${timeLabel(state.exportedAt)}`;
+    const saveToast = document.getElementById("saveToast");
+    if (saveToast) saveToast.textContent = `☁ Firebase sincronizado: ${timeLabel(state.exportedAt)}`;
     if (typeof window.renderAll === "function") window.renderAll();
     if (typeof window.avRefreshAccess === "function") window.avRefreshAccess();
     if (typeof window.updateHeaderTimestamp === "function") window.updateHeaderTimestamp();
