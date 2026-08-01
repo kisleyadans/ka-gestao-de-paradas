@@ -7689,6 +7689,10 @@ body.on-avanco #pcmBloqLogoutBtn { display:none !important; }
 .avanco-item-input{width:70px;padding:6px 8px;border:1px solid #E3E7EC;border-radius:6px;font-size:13px;font-weight:800;text-align:center}
 .avanco-item-status{padding:6px 8px;border:1px solid #E3E7EC;border-radius:6px;font-size:12px;font-weight:700;background:#fff}
 .avanco-item-obs{width:100%;margin-top:6px;padding:6px 8px;border:1px solid #E3E7EC;border-radius:6px;font-size:11px;font-family:inherit;resize:vertical;min-height:32px}
+.avanco-item-inicio-real{display:flex;align-items:end;gap:8px;flex-wrap:wrap;margin-top:8px;padding:8px;background:#F5FAF7;border:1px solid #D7E9DE;border-radius:7px}
+.avanco-item-inicio-real label{font-size:10px;font-weight:800;color:#40506A;display:flex;flex-direction:column;gap:3px}
+.avanco-item-inicio-input{padding:6px 8px;border:1px solid #C9D8D0;border-radius:6px;font-size:12px;background:#fff}
+.avanco-item-inicio-real button{padding:6px 9px;border:1px solid #008542;border-radius:6px;background:#fff;color:#00693C;font-size:10px;font-weight:800;cursor:pointer}
 .avanco-item-actions{display:flex;flex-direction:column;gap:6px;align-items:flex-end;justify-content:center}
 .avanco-item-actions button{padding:6px 12px;border:0;border-radius:6px;font-size:11px;font-weight:800;cursor:pointer;text-transform:uppercase;letter-spacing:.3px;min-width:100px}
 .avanco-item-actions .btn-save{background:#008542;color:#fff}
@@ -8516,6 +8520,11 @@ body.admin-mode .admin-bar{border-color:#C7E6D3;background:#F5FAF7}
               ).join('')
             +'</select>'
           +'</div>'
+          +'<div class="avanco-item-inicio-real">'
+            +'<label>In&iacute;cio real<input type="datetime-local" class="avanco-item-inicio-input" value="'+esc(a.inicioReal||'')+'" onchange="avOnInicioReal(this,\''+esc(a.id)+'\')"></label>'
+            +'<button type="button" onclick="avUsarInicioPlanejado(\''+esc(a.id)+'\')">Usar in&iacute;cio planejado</button>'
+            +'<span class="small-muted">O hor&aacute;rio do registro fica separado.</span>'
+          +'</div>'
           +'<textarea class="avanco-item-obs" placeholder="Observação / justificativa / ação (opcional)" onchange="avOnObs(this,\''+esc(a.id)+'\')">'+esc(a.obs||'')+'</textarea>'
         +'</div>'
         +'<div class="avanco-item-actions">'
@@ -8553,6 +8562,19 @@ body.admin-mode .admin-bar{border-color:#C7E6D3;background:#F5FAF7}
   };
   window.avOnStatus = function(el, id){ markDirty(id); };
   window.avOnObs = function(el, id){ markDirty(id); };
+  window.avOnInicioReal = function(el, id){ markDirty(id); };
+  window.avUsarInicioPlanejado = function(id){
+    const a = findAct(id);
+    const item = document.querySelector('.avanco-item[data-id="'+CSS.escape(id)+'"]');
+    const input = item && item.querySelector('.avanco-item-inicio-input');
+    if(!a || !input) return;
+    if(!a.inicio){
+      alert('A atividade n\u00e3o possui in\u00edcio planejado.');
+      return;
+    }
+    input.value = String(a.inicio).slice(0,16);
+    markDirty(id);
+  };
 
   window.avSalvar = async function(id){
     if(!supAtual){ alert('Sessão expirada. Faça login novamente.'); return; }
@@ -8569,15 +8591,25 @@ body.admin-mode .admin-bar{border-color:#C7E6D3;background:#F5FAF7}
     const status = item.querySelector('.avanco-item-status').value;
     const obs = item.querySelector('.avanco-item-obs').value;
     const btn = item.querySelector('[data-save]');
+    const inicioRealInput = item.querySelector('.avanco-item-inicio-input');
+    const inicioReal = String(inicioRealInput?.value||'').trim();
+    const exigeInicioReal = prog>0 || status==='Em andamento' || status==='Conclu\u00edda';
+    if(exigeInicioReal && !inicioReal){
+      alert('Confirme o in\u00edcio real ou use o hor\u00e1rio planejado antes de salvar o avan\u00e7o.');
+      if(inicioRealInput) inicioRealInput.focus();
+      return;
+    }
+    if(inicioReal && isNaN(new Date(inicioReal).getTime())){ alert('Informe um in\u00edcio real v\u00e1lido.'); return; }
     if(btn){ btn.disabled=true; btn.textContent='Salvando...'; }
     try{
       if(typeof window.kaSaveDisciplineProgress!=='function') throw new Error('Sincronização do Firebase indisponível');
-      await window.kaSaveDisciplineProgress(id,{progresso:prog,status,obs,updatedBy:supAtual.nome});
+      await window.kaSaveDisciplineProgress(id,{progresso:prog,status,obs,inicioReal,updatedBy:supAtual.nome});
       a.progresso = Math.max(0, Math.min(100, prog));
       a.status = status;
       a.obs = obs;
       a.autoProgress = false;
       a.updatedBy = supAtual.nome;
+      a.inicioReal = inicioReal;
       a.updatedAt = new Date().toISOString();
       clearDirty(id);
       renderStats();
@@ -9502,14 +9534,18 @@ setInterval(function(){ try{ updateHeaderTimestamp(); }catch(e){} }, 30000);
   };
 
   quickStatus=function(id,val){
-    const a=activities.find(x=>x.id===id);if(!a)return;a.autoProgress=false;a.status=val;a.ultimaAtualizacao=new Date().toISOString();
+    const a=activities.find(x=>x.id===id);if(!a)return;
+    if((val==='Em andamento'||val==='Conclu\u00edda')&&!a.inicioReal){alert('Informe o in\u00edcio real antes de alterar o status.');renderAll();return;}
+    a.autoProgress=false;a.status=val;a.ultimaAtualizacao=new Date().toISOString();
     if(val==='Concluída'){a.progresso=100;if(!a.terminoReal)a.terminoReal=toLocalInput(refNow());}
     if(val==='Não iniciada'&&clampPct(a.progresso)>=100)a.progresso=0;
     saveLocal();renderAll();
   };
   quickProgress=function(id,val){
-    const a=activities.find(x=>x.id===id);if(!a)return;a.autoProgress=false;a.progresso=clampPct(val);a.ultimaAtualizacao=new Date().toISOString();
-    if(a.progresso>0&&!a.inicioReal)a.inicioReal=toLocalInput(refNow());
+    const a=activities.find(x=>x.id===id);if(!a)return;
+    const proximo=clampPct(val);
+    if(proximo>0&&!a.inicioReal){alert('Informe o in\u00edcio real antes de registrar o avan\u00e7o.');renderAll();return;}
+    a.autoProgress=false;a.progresso=proximo;a.ultimaAtualizacao=new Date().toISOString();
     if(a.progresso>=100){a.status='Concluída';if(!a.terminoReal)a.terminoReal=toLocalInput(refNow());}
     else if(a.status==='Concluída')a.status='Em andamento';
     saveLocal();renderAll();
@@ -9548,6 +9584,7 @@ setInterval(function(){ try{ updateHeaderTimestamp(); }catch(e){} }, 30000);
     if(!a.atividade||!ini||!fim){alert('Informe atividade, início e término planejados.');return;}
     if(fim<ini||(!milestone&&fim<=ini)){alert(milestone?'O término do marco não pode ser anterior ao início.':'O término deve ser maior que o início. Para duração zero, selecione “Marco”.');return;}
     if(a.inicioReal&&a.terminoReal&&parseDate(a.terminoReal)<parseDate(a.inicioReal)){alert('O término real não pode ser anterior ao início real.');return;}
+    if((a.progresso>0||a.status==='Em andamento'||a.status==='Conclu\u00edda')&&!a.inicioReal){alert('Informe o in\u00edcio real para atividades iniciadas.');return;}
     if(a.status==='Concluída'||a.progresso>=100){a.status='Concluída';a.progresso=100;if(!a.terminoReal)a.terminoReal=toLocalInput(refNow());}
     const wasEditing=!!$('editId').value, idx=activities.findIndex(x=>x.id===a.id);if(idx>=0)activities[idx]=a;else activities.push(a);
     saveLocal();resetForm();renderAll();

@@ -263,6 +263,9 @@ import {
         activity.progresso = Math.max(0, Math.min(100, Number(progress.progresso || 0)));
         activity.status = String(progress.status || activity.status || "Não iniciada");
         activity.obs = String(progress.obs ?? activity.obs ?? "");
+        if (typeof progress.inicioReal === "string" && progress.inicioReal) {
+          activity.inicioReal = progress.inicioReal;
+        }
         activity.autoProgress = false;
         activity.updatedBy = String(progress.updatedBy || "");
         activity.updatedAt = progress.updatedAt || activity.updatedAt;
@@ -608,6 +611,9 @@ import {
     const status = String(patch?.status || "Não iniciada");
     const observation = String(patch?.obs || "").slice(0, 4000);
     const updater = String(patch?.updatedBy || disciplineSession?.name || operatorName || "Editor").slice(0, 80);
+    const actualStart = String(patch?.inicioReal || activity.inicioReal || "").slice(0, 40);
+    const needsActualStart = progress > 0 || status === "Em andamento" || status === "Conclu\u00edda";
+    if (needsActualStart && !actualStart) throw new Error("Confirme o in\u00edcio real antes de registrar o avan\u00e7o");
     const progressDoc = doc(progressRef, encodeURIComponent(String(activity.id)));
     setStatus(`Salvando avanço de ${activity.disciplina}...`, "pending");
     try {
@@ -621,6 +627,7 @@ import {
           status,
           obs: observation,
           updatedBy: updater,
+          inicioReal: actualStart,
           editorSessionId: editorSessionId || createEditorSessionId(),
           updatedAt: serverTimestamp(),
         });
@@ -629,6 +636,7 @@ import {
       activity.status = status;
       activity.obs = observation;
       activity.autoProgress = false;
+      activity.inicioReal = actualStart;
       activity.updatedBy = updater;
       setStatus(`Online · ${updater} · avanço salvo às ${timeLabel()}`, "online");
       return true;
