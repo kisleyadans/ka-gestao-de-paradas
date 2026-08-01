@@ -37,7 +37,7 @@ service cloud.firestore {
       allow create, update: if request.auth != null
         && request.resource.data.keys().hasOnly([
           "activityId", "disciplineKey", "disciplineName", "editorEmail",
-          "progresso", "status", "obs", "updatedBy", "editorSessionId", "updatedAt"
+          "progresso", "status", "obs", "inicioReal", "updatedBy", "editorSessionId", "updatedAt"
         ])
         && request.resource.data.activityId is string
         && request.resource.data.disciplineKey is string
@@ -48,6 +48,8 @@ service cloud.firestore {
         && request.resource.data.progresso <= 100
         && request.resource.data.status is string
         && request.resource.data.obs is string
+        && request.resource.data.inicioReal is string
+        && request.resource.data.inicioReal.size() <= 40
         && request.resource.data.updatedBy is string
         && request.resource.data.editorSessionId is string
         && request.resource.data.updatedAt == request.time
