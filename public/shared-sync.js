@@ -266,6 +266,9 @@ import {
         if (typeof progress.inicioReal === "string" && progress.inicioReal) {
           activity.inicioReal = progress.inicioReal;
         }
+        if (typeof progress.terminoReal === "string") {
+          activity.terminoReal = progress.terminoReal;
+        }
         activity.autoProgress = false;
         activity.updatedBy = String(progress.updatedBy || "");
         activity.updatedAt = progress.updatedAt || activity.updatedAt;
@@ -614,6 +617,10 @@ import {
     const actualStart = String(patch?.inicioReal || activity.inicioReal || "").slice(0, 40);
     const needsActualStart = progress > 0 || status === "Em andamento" || status === "Conclu\u00edda";
     if (needsActualStart && !actualStart) throw new Error("Confirme o in\u00edcio real antes de registrar o avan\u00e7o");
+    const completed = progress >= 100 || status === "Conclu\u00edda";
+    const nowLocal = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    const actualFinish = completed
+      ? String(patch?.terminoReal || activity.terminoReal || nowLocal).slice(0, 40) : "";
     const progressDoc = doc(progressRef, encodeURIComponent(String(activity.id)));
     setStatus(`Salvando avanço de ${activity.disciplina}...`, "pending");
     try {
@@ -629,6 +636,7 @@ import {
           updatedBy: updater,
           inicioReal: actualStart,
           editorSessionId: editorSessionId || createEditorSessionId(),
+          terminoReal: actualFinish,
           updatedAt: serverTimestamp(),
         });
       });
@@ -639,6 +647,7 @@ import {
       activity.inicioReal = actualStart;
       activity.updatedBy = updater;
       setStatus(`Online · ${updater} · avanço salvo às ${timeLabel()}`, "online");
+      activity.terminoReal = actualFinish;
       return true;
     } catch (error) {
       console.error("Discipline progress save failed", error);

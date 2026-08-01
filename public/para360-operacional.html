@@ -7338,7 +7338,8 @@ function renderMgmtAreaSummary(list){
     }
     const dev = Number(k.deviation||0);
     // CORREÇÃO: se a área está 100% concluída, zera projeção de atraso e força status "concluída"
-    const allDone = (k.total>0) && (k.done>=k.total) && (Number(k.progress||0)>=100);
+    const operationalArea = areaList.filter(a=>validActivity(a)&&getEffectiveStatus(a)!=='Cancelada');
+    const allDone = operationalArea.length>0 && operationalArea.every(a=>getEffectiveStatus(a)==='Conclu\u00edda'||clampPct(a.progresso)>=100);
     const cls = allDone ? 'good'
       : ((k.criticalPathDelayed>0 || k.delayed>0 || dev < -5) ? 'bad' : (dev < 0 ? 'warn' : 'good'));
     const statusTxt = allDone ? 'concluída'
@@ -8593,6 +8594,7 @@ body.admin-mode .admin-bar{border-color:#C7E6D3;background:#F5FAF7}
     const btn = item.querySelector('[data-save]');
     const inicioRealInput = item.querySelector('.avanco-item-inicio-input');
     const inicioReal = String(inicioRealInput?.value||'').trim();
+    const terminoReal = (prog>=100 || status==='Conclu\u00edda') ? String(a.terminoReal||toLocalInput(refNow())) : '';
     const exigeInicioReal = prog>0 || status==='Em andamento' || status==='Conclu\u00edda';
     if(exigeInicioReal && !inicioReal){
       alert('Confirme o in\u00edcio real ou use o hor\u00e1rio planejado antes de salvar o avan\u00e7o.');
@@ -8603,13 +8605,14 @@ body.admin-mode .admin-bar{border-color:#C7E6D3;background:#F5FAF7}
     if(btn){ btn.disabled=true; btn.textContent='Salvando...'; }
     try{
       if(typeof window.kaSaveDisciplineProgress!=='function') throw new Error('Sincronização do Firebase indisponível');
-      await window.kaSaveDisciplineProgress(id,{progresso:prog,status,obs,inicioReal,updatedBy:supAtual.nome});
+      await window.kaSaveDisciplineProgress(id,{progresso:prog,status,obs,inicioReal,terminoReal,updatedBy:supAtual.nome});
       a.progresso = Math.max(0, Math.min(100, prog));
       a.status = status;
       a.obs = obs;
       a.autoProgress = false;
       a.updatedBy = supAtual.nome;
       a.inicioReal = inicioReal;
+      a.terminoReal = terminoReal;
       a.updatedAt = new Date().toISOString();
       clearDirty(id);
       renderStats();
@@ -9223,6 +9226,16 @@ setInterval(function(){ try{ updateHeaderTimestamp(); }catch(e){} }, 30000);
       return Math.max(0,Math.min(100,earned/total*100));
     }
 
+    const completed=valid.every(a=>getEffectiveStatus(a)==='Conclu\u00edda'||clampPct(a.progresso)>=100);
+    if(completed){
+      const actualEnds=valid.map(a=>parseDate(a.terminoReal)).filter(Boolean);
+      const actualEnd=actualEnds.length
+        ? new Date(Math.max(...actualEnds.map(d=>d.getTime())))
+        : plannedEnd;
+      return {valid,now,minD,plannedEnd,plannedEquivalent:plannedEnd,projectedEnd:actualEnd,shiftMs:0,total,currentEarned,currentReal:100,plannedAt,completed:true,actualEnd};
+    }
+
+
     let plannedEquivalent;
     if(currentReal<=0){
       plannedEquivalent=minD;
@@ -9243,7 +9256,7 @@ setInterval(function(){ try{ updateHeaderTimestamp(); }catch(e){} }, 30000);
       ? 0
       : now.getTime()-plannedEquivalent.getTime();
     const projectedEnd=new Date(plannedEnd.getTime()+shiftMs);
-    return {valid,now,minD,plannedEnd,plannedEquivalent,projectedEnd,shiftMs,total,currentEarned,currentReal,plannedAt};
+    return {valid,now,minD,plannedEnd,plannedEquivalent,projectedEnd,shiftMs,total,currentEarned,currentReal,plannedAt,completed:false,actualEnd:null};
   }
   window.pcmSCurveForecast=sCurveForecast;
 
@@ -9276,6 +9289,19 @@ setInterval(function(){ try{ updateHeaderTimestamp(); }catch(e){} }, 30000);
     const taskDelayMin=Math.max(0,cpDelay,beyondDelay);
     const maxDelayActivity=taskDelayMin?(useCP?cpMax:beyond):null;
     const forecast=sCurveForecast(valid);
+    if(forecast&&forecast.completed){
+      return {
+        plannedEnd:forecast.plannedEnd,
+        projectedEnd:forecast.actualEnd||forecast.plannedEnd,
+        delayMin:0,
+        delayedProjected:0,
+        maxDelayActivity:null,
+        lateStartCount:0,
+        projectionBasis:'Escopo conclu\u00eddo \u2014 proje\u00e7\u00e3o encerrada',
+        completed:true,
+        actualEnd:forecast.actualEnd||forecast.plannedEnd
+      };
+    }
     const delayMin=forecast?Math.max(0,Math.round(forecast.shiftMs/60000)):taskDelayMin;
     return {
       plannedEnd:forecast?forecast.plannedEnd:plannedEnd,
@@ -9313,7 +9339,7 @@ setInterval(function(){ try{ updateHeaderTimestamp(); }catch(e){} }, 30000);
       totalHH:operational.reduce((s,a)=>s+Number(a.hh||0),0),doneHH:operational.reduce((s,a)=>s+Number(a.hh||0)*(clampPct(a.progresso)/100),0),
       adherence:operational.length?Math.round(done/operational.length*100):0,expected,deviation:progress-expected,
       projectedEnd:proj.projectedEnd,plannedEnd:proj.plannedEnd,projectedDelayMin:proj.delayMin,delayedProjected:proj.delayedProjected,
-      lateStartCount:proj.lateStartCount,projectionBasis:proj.projectionBasis,maxDelayActivity:proj.maxDelayActivity
+      lateStartCount:proj.lateStartCount,projectionBasis:proj.projectionBasis,maxDelayActivity:proj.maxDelayActivity,completed:!!proj.completed,actualEnd:proj.actualEnd||null
     };
   };
 
@@ -9418,11 +9444,12 @@ setInterval(function(){ try{ updateHeaderTimestamp(); }catch(e){} }, 30000);
     const forecast=sCurveForecast(valid);
     const now=forecast.now;
     const minD=new Date(Math.min(forecast.minD.getTime(),...valid.map(a=>(parseDate(a.inicioReal)||scheduleInfo(a).ini).getTime())));
+    const curveReferenceEnd=forecast.completed?(forecast.actualEnd||forecast.plannedEnd):now;
     const maxD=new Date(Math.max(
       forecast.plannedEnd.getTime(),
       forecast.projectedEnd.getTime(),
       ...valid.map(a=>{const d=parseDate(a.terminoReal);return d?d.getTime():0;}),
-      now.getTime()
+      curveReferenceEnd.getTime()
     ));
     const total=forecast.total;
     const currentEarned=forecast.currentEarned;
@@ -11118,7 +11145,7 @@ setInterval(function(){ try{ updateHeaderTimestamp(); }catch(e){} }, 30000);
   },30000);
 })();
 </script><datalist id="respBloqueioOptions"></datalist><datalist id="faseBloqueioOptions"></datalist><datalist id="seBloqueioOptions"></datalist>
-<script type="module" src="/shared-sync.js?v=20260801-2"></script>
+<script type="module" src="/shared-sync.js?v=20260801-3"></script>
 
 
 <script id="ka-firebase-shell">(function () {
