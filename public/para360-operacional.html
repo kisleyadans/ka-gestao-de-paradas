@@ -3342,7 +3342,7 @@
           <strong id="mgmtNowText">23/07 · 13:23</strong>
           <small>Atualização automática a cada minuto</small>
         </div>
-      </div><div id="pcmDataQualityBanner" class="pcm-data-banner "><strong>⚠ Qualidade dos dados:</strong> 0 programação(ões) inválida(s) · 0 sem descrição · 71 possível(is) duplicidade(s). Itens inválidos foram excluídos dos KPIs e da projeção.</div>
+      </div><div id="pcmDataQualityBanner" class="pcm-data-banner admin-hide"><strong>⚠ Qualidade dos dados:</strong> 0 programação(ões) inválida(s) · 0 sem descrição · 71 possível(is) duplicidade(s). Itens inválidos foram excluídos dos KPIs e da projeção.</div>
 
       <div class="cc-hero-grid">
         <div class="cc-hero-card cc-status-hero">
@@ -9640,8 +9640,8 @@ setInterval(function(){ try{ updateHeaderTimestamp(); }catch(e){} }, 30000);
   window.pcmQualityStats=qualityStats;
   function renderQuality(){
     const q=qualityStats(), header=document.querySelector('#view-dashboard .cc-command-header');if(!header)return;
-    let b=document.getElementById('pcmDataQualityBanner');if(!b){b=document.createElement('div');b.id='pcmDataQualityBanner';b.className='pcm-data-banner';header.insertAdjacentElement('afterend',b);}
-    const has=q.invalid||q.blank||q.duplicateExtra;b.className='pcm-data-banner '+(has?'':'good');
+    let b=document.getElementById('pcmDataQualityBanner');if(!b){b=document.createElement('div');b.id='pcmDataQualityBanner';b.className='pcm-data-banner admin-hide';header.insertAdjacentElement('afterend',b);}
+    const has=q.invalid||q.blank||q.duplicateExtra;b.className='pcm-data-banner admin-hide '+(has?'':'good');
     b.innerHTML=has?`<strong>⚠ Qualidade dos dados:</strong> ${q.invalid} programação(ões) inválida(s) · ${q.blank} sem descrição · ${q.duplicateExtra} possível(is) duplicidade(s). Itens inválidos foram excluídos dos KPIs e da projeção.`:'<strong>✓ Dados validados:</strong> nenhuma inconsistência estrutural encontrada.';
     const bm=document.getElementById('bloqueioMeta');if(bm&&Array.isArray(bloqueios)){
       const active=bloqueios.filter(x=>['Bloqueado','Em manutenção','Testado'].includes(x.status)),noDate=active.filter(x=>!x.dataBloq).length,noResp=active.filter(x=>!cleanText(x.responsavel)).length;
