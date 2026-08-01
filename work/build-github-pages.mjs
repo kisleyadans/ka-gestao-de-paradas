@@ -15,10 +15,10 @@ await cp(firebaseOutput, pagesOutput, { recursive: true });
 
 const indexPath = path.join(pagesOutput, "index.html");
 const html = (await readFile(indexPath, "utf8"))
-  .replaceAll('src="/shared-sync.js?v=20260801-2"', 'src="./shared-sync.js?v=20260801-2"')
+  .replaceAll('src="/shared-sync.js?v=20260801-3"', 'src="./shared-sync.js?v=20260801-3"')
   .replaceAll('href="/shared-sync.js"', 'href="./shared-sync.js"');
 
-if (!html.includes('src="./shared-sync.js?v=20260801-2"')) {
+if (!html.includes('src="./shared-sync.js?v=20260801-3"')) {
   throw new Error("O build do GitHub Pages não contém o sincronizador Firebase relativo.");
 }
 
