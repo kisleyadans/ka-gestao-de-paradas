@@ -7338,7 +7338,7 @@ function renderMgmtAreaSummary(list){
     }
     const dev = Number(k.deviation||0);
     // CORREÇÃO: se a área está 100% concluída, zera projeção de atraso e força status "concluída"
-    const operationalArea = areaList.filter(a=>validActivity(a)&&getEffectiveStatus(a)!=='Cancelada');
+    const operationalArea = areaList.filter(a=>parseDate(a.inicio)&&parseDate(a.termino)&&getEffectiveStatus(a)!=='Cancelada');
     const allDone = operationalArea.length>0 && operationalArea.every(a=>getEffectiveStatus(a)==='Conclu\u00edda'||clampPct(a.progresso)>=100);
     const cls = allDone ? 'good'
       : ((k.criticalPathDelayed>0 || k.delayed>0 || dev < -5) ? 'bad' : (dev < 0 ? 'warn' : 'good'));
