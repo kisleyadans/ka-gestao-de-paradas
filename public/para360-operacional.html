@@ -7339,7 +7339,7 @@ function renderMgmtAreaSummary(list){
     const dev = Number(k.deviation||0);
     // CORREÇÃO: se a área está 100% concluída, zera projeção de atraso e força status "concluída"
     const operationalArea = areaList.filter(a=>parseDate(a.inicio)&&parseDate(a.termino)&&getEffectiveStatus(a)!=='Cancelada');
-    const allDone = operationalArea.length>0 && operationalArea.every(a=>getEffectiveStatus(a)==='Conclu\u00edda'||clampPct(a.progresso)>=100);
+    const allDone = operationalArea.length>0 && operationalArea.every(a=>getEffectiveStatus(a)==='Conclu\u00edda'||Math.max(0,Math.min(100,Number(a.progresso||0)))>=100);
     const cls = allDone ? 'good'
       : ((k.criticalPathDelayed>0 || k.delayed>0 || dev < -5) ? 'bad' : (dev < 0 ? 'warn' : 'good'));
     const statusTxt = allDone ? 'concluída'
@@ -7382,7 +7382,7 @@ function renderMgmtAreaSummary(list){
         <div class="mgmt-area-metric"><b>${k.criticalPathDone}/${k.criticalPathTotal}</b><span>Crítico</span></div>
         <div class="mgmt-area-metric"><b>${k.extraScope||0}</b><span>Extra</span></div>
       </div>
-      <div class="mgmt-area-footer"><span>Término ${allDone?'real':'proj.'}: <strong>${endTxt(allDone ? (k.plannedEnd||k.projectedEnd) : k.projectedEnd)}</strong></span><strong style="color:${delayColor}">${delayTxt}</strong></div>
+      <div class="mgmt-area-footer"><span>Término ${allDone?'real':'proj.'}: <strong>${endTxt(allDone ? (k.actualEnd||k.projectedEnd||k.plannedEnd) : k.projectedEnd)}</strong></span><strong style="color:${delayColor}">${delayTxt}</strong></div>
     </div>`;
   }).join('');
 }
