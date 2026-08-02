@@ -57,7 +57,8 @@ let html = source
   .replace(/<title>[\s\S]*?<\/title>/i, "<title>K.A - Gestão de Paradas</title>")
   .replace('<script src="/shared-sync.js"></script>', '<script type="module" src="/shared-sync.js"></script>');
 
-if (!html.includes('src="/shared-sync.js"')) {
+const sharedSyncTagPattern = /<script\b[^>]*\bsrc=["'](?:\.?\/)?shared-sync\.js(?:\?[^"']*)?["'][^>]*><\/script>/gi;
+if ([...html.matchAll(sharedSyncTagPattern)].length === 0) {
   html = html.replace("</body>", '<script type="module" src="/shared-sync.js"></script>\n</body>');
 }
 if (!html.includes('id="ka-firebase-app-style"')) {
@@ -77,8 +78,9 @@ await Promise.all([
   copyFile(syncCorePath, path.join(outputDir, "firebase-sync-core.mjs")),
 ]);
 
+const sharedSyncTags = [...html.matchAll(sharedSyncTagPattern)];
 const checks = [
-  [html.includes('src="/shared-sync.js"'), "sincronização online"],
+  [sharedSyncTags.length === 1, "um único sincronizador online"],
   [html.includes("ka-firebase-shell"), "visual de aplicativo"],
   [!/<html[^>]*data-ka-offline-ready/i.test(html), "inicialização do menu móvel"],
   [html.includes("ka_project_database_generation"), "limpeza única do cache da parada anterior"],
