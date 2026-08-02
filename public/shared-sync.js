@@ -67,6 +67,7 @@ import {
   let applyingRemote = false;
   let saving = false;
   let dirty = false;
+  let pendingActivitySave = false;
   let saveTimer = null;
   let statusChip = null;
   let baselineActivities = new Map();
@@ -534,12 +535,16 @@ import {
     }
     saving = true;
     dirty = false;
+    const shouldSaveActivities = pendingActivitySave;
+    pendingActivitySave = false;
     setStatus("Sincronizando alterações...", "pending");
     let saveFailed = false;
     try {
-      const changes = collectActivityChanges();
+      const changes = shouldSaveActivities ? collectActivityChanges() : [];
       const currentShared = sharedPart(buildState());
-      const activityResult = await saveActivityChanges(changes);
+      const activityResult = shouldSaveActivities
+        ? await saveActivityChanges(changes)
+        : { conflicts: [] };
       const sharedResult = await saveSharedChanges(currentShared);
       const conflicts = [...activityResult.conflicts, ...sharedResult.conflicts];
       if (conflicts.length > 0) {
@@ -571,8 +576,9 @@ import {
     return !saveFailed;
   }
 
-  function scheduleSave(delay) {
+  function scheduleSave(delay, includeActivities) {
     if (!operator || applyingRemote) return;
+    if (includeActivities === true) pendingActivitySave = true;
     dirty = true;
     if (saveTimer) clearTimeout(saveTimer);
     saveTimer = setTimeout(() => {
@@ -667,8 +673,8 @@ import {
     const wrapped = function () {
       const result = original.apply(this, arguments);
       if (result && typeof result.then === "function") {
-        result.then(() => { if (!applyingRemote) scheduleSave(delay); });
-      } else if (!applyingRemote) scheduleSave(delay);
+        result.then(() => { if (!applyingRemote) scheduleSave(delay, name === "saveLocal"); });
+      } else if (!applyingRemote) scheduleSave(delay, name === "saveLocal");
       return result;
     };
     wrapped.__kaSharedWrapped = true;
