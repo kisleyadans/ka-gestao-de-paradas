@@ -233,6 +233,17 @@ export function applyExclusiveActivityChange(currentEntry, change) {
   };
 }
 
+// A exclusao e uma acao destrutiva confirmada pelo administrador. Ela nao deve
+// ser bloqueada por diferencas entre o progresso consolidado (colecao de
+// avancos) e a copia estrutural armazenada no bloco da atividade. Edicoes
+// comuns feitas por outra sessao continuam usando a mesclagem por campo.
+export function resolveActivityChange(currentEntry, change, sameEditorSession = false) {
+  if (change?.deleted || sameEditorSession) {
+    return applyExclusiveActivityChange(currentEntry, change);
+  }
+  return mergeActivityChange(currentEntry, change);
+}
+
 function changedSharedKeys(base, next) {
   return SHARED_KEYS.filter((key) => !same(base?.[key], next?.[key]));
 }

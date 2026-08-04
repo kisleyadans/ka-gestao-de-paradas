@@ -9,6 +9,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
 import {
   collection,
+  deleteDoc,
   doc,
   initializeFirestore,
   onSnapshot,
@@ -17,10 +18,8 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 import {
   BUCKET_COUNT,
-  applyExclusiveActivityChange,
   collectActivityChanges,
   confirmActivityChanges,
-  mergeActivityChange,
   mergeSharedState,
   bucketId,
   buildBuckets,
@@ -29,6 +28,7 @@ import {
   isAuthorizedDisciplineProgress,
   normalizeActivity,
   normalizeDiscipline,
+  resolveActivityChange,
   same,
   sharedPart,
 } from "./firebase-sync-core.mjs";
@@ -420,7 +420,7 @@ import {
       grouped.get(id).push(change);
     });
     const ids = Array.from(grouped.keys());
-    return runTransaction(db, async (transaction) => {
+    const result = await runTransaction(db, async (transaction) => {
       const snapshots = await Promise.all(ids.map((id) => transaction.get(doc(bucketsRef, id))));
       const conflicts = [];
       ids.forEach((id, bucketIndex) => {
@@ -438,9 +438,7 @@ import {
           const sameEditorSession = Boolean(
             editorSessionId && data.editorSessionId === editorSessionId,
           );
-          const result = sameEditorSession
-            ? applyExclusiveActivityChange(currentEntry, change)
-            : mergeActivityChange(currentEntry, change);
+          const result = resolveActivityChange(currentEntry, change, sameEditorSession);
           if (!result.accepted) {
             conflicts.push({ id: change.id, fields: result.fields || [], current: result.current || currentEntry });
             return;
@@ -450,7 +448,6 @@ import {
               entries.splice(index, 1);
               changed = true;
             }
-            transaction.delete(doc(progressRef, encodeURIComponent(String(change.id))));
           } else if (index >= 0) {
             entries[index] = result.entry;
             changed = true;
@@ -471,6 +468,16 @@ import {
       });
       return { conflicts };
     });
+    // O documento de progresso e secundario. A atividade ja foi removida do
+    // bloco principal; se a limpeza deste historico falhar, isso nao pode
+    // restaurar nem bloquear a exclusao confirmada pelo administrador.
+    const deletedIds = changes.filter((change) => change.deleted).map((change) => change.id);
+    if (deletedIds.length > 0) {
+      await Promise.allSettled(deletedIds.map((id) => (
+        deleteDoc(doc(progressRef, encodeURIComponent(String(id))))
+      )));
+    }
+    return result;
   }
 
   async function saveSharedChanges(currentShared) {
