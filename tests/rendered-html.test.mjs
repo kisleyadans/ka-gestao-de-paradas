@@ -26,7 +26,7 @@ test("inclui a sincronização gratuita e concorrente no painel publicado", asyn
     readFile(new URL("../firestore.rules", import.meta.url), "utf8"),
   ]);
 
-  assert.match(panel, /<script[^>]*src="\/shared-sync\.js\?v=20260804-8"[^>]*><\/script>/i);
+  assert.match(panel, /<script[^>]*src="\/shared-sync\.js\?v=20260804-9"[^>]*><\/script>/i);
   assert.match(panel, /<script id="pcm-initial-access-mode">/i);
   assert.match(panel, /<script id="ka-blank-project-v2">/i);
   assert.match(panel, /ka_project_database_generation/);
@@ -41,7 +41,7 @@ test("inclui a sincronização gratuita e concorrente no painel publicado", asyn
   assert.match(sync, /Vários computadores podem editar atividades diferentes/i);
   assert.match(sync, /runTransaction/);
   assert.match(sync, /editorSessionId/);
-  assert.match(sync, /mergeActivityChange/);
+  assert.match(sync, /resolveActivityChange/);
   assert.match(sync, /mergeSharedState/);
   assert.match(sync, /baseState: merged\.merged/);
   assert.match(sync, /kaSaveSharedNow = flushSharedChanges/);
@@ -96,7 +96,7 @@ test("inclui a sincronização gratuita e concorrente no painel publicado", asyn
   assert.match(sync, /const shouldSaveActivities = pendingActivitySave/);
   assert.match(sync, /collectActivityChanges\(window\.activities, baselineActivities\)/);
   assert.match(sync, /baselineActivities = confirmActivityChanges\(baselineActivities, changes\)/);
-  assert.match(sync, /transaction\.delete\(doc\(progressRef/);
+  assert.match(sync, /Promise\.allSettled\(deletedIds/);
   assert.match(panel, /async function deleteActivity\(id\)/);
   assert.match(panel, /await window\.kaSaveSharedNow\(\)/);
   assert.match(panel, /A atividade não foi excluída porque o Firebase não confirmou/);

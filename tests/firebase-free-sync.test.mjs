@@ -12,6 +12,7 @@ import {
   mergeActivityChange,
   mergeKeyedCollection,
   mergeSharedState,
+  resolveActivityChange,
 } from "../public/firebase-sync-core.mjs";
 
 test("autoriza avanço somente para o e-mail da disciplina da atividade", () => {
@@ -142,6 +143,25 @@ test("modo exclusivo aceita exclusao mesmo depois de uma gravacao anterior", () 
 
   assert.equal(result.accepted, true);
   assert.equal(result.deleted, true);
+});
+
+test("administrador exclui atividade mesmo quando o avanco consolidado difere do bloco", () => {
+  const currentEntry = {
+    id: "ATV-AVANCO",
+    activity: { id: "ATV-AVANCO", progresso: 0, status: "Nao iniciada" },
+    position: 0,
+    revision: 7,
+  };
+  const result = resolveActivityChange(currentEntry, {
+    id: "ATV-AVANCO",
+    base: { id: "ATV-AVANCO", progresso: 100, status: "Concluida" },
+    next: null,
+    deleted: true,
+  }, false);
+
+  assert.equal(result.accepted, true);
+  assert.equal(result.deleted, true);
+  assert.equal(result.revision, 8);
 });
 
 test("atividade criada pode ser excluida antes do retorno em tempo real", () => {
