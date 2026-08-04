@@ -7692,7 +7692,7 @@ body.on-avanco #pcmBloqLogoutBtn { display:none !important; }
 .avanco-item-obs{width:100%;margin-top:6px;padding:6px 8px;border:1px solid #E3E7EC;border-radius:6px;font-size:11px;font-family:inherit;resize:vertical;min-height:32px}
 .avanco-item-inicio-real{display:flex;align-items:end;gap:8px;flex-wrap:wrap;margin-top:8px;padding:8px;background:#F5FAF7;border:1px solid #D7E9DE;border-radius:7px}
 .avanco-item-inicio-real label{font-size:10px;font-weight:800;color:#40506A;display:flex;flex-direction:column;gap:3px}
-.avanco-item-inicio-input{padding:6px 8px;border:1px solid #C9D8D0;border-radius:6px;font-size:12px;background:#fff}
+.avanco-item-inicio-input,.avanco-item-termino-input{padding:6px 8px;border:1px solid #C9D8D0;border-radius:6px;font-size:12px;background:#fff}
 .avanco-item-inicio-real button{padding:6px 9px;border:1px solid #008542;border-radius:6px;background:#fff;color:#00693C;font-size:10px;font-weight:800;cursor:pointer}
 .avanco-item-actions{display:flex;flex-direction:column;gap:6px;align-items:flex-end;justify-content:center}
 .avanco-item-actions button{padding:6px 12px;border:0;border-radius:6px;font-size:11px;font-weight:800;cursor:pointer;text-transform:uppercase;letter-spacing:.3px;min-width:100px}
@@ -8524,7 +8524,9 @@ body.admin-mode .admin-bar{border-color:#C7E6D3;background:#F5FAF7}
           +'<div class="avanco-item-inicio-real">'
             +'<label>In&iacute;cio real<input type="datetime-local" class="avanco-item-inicio-input" value="'+esc(a.inicioReal||'')+'" onchange="avOnInicioReal(this,\''+esc(a.id)+'\')"></label>'
             +'<button type="button" onclick="avUsarInicioPlanejado(\''+esc(a.id)+'\')">Usar in&iacute;cio planejado</button>'
-            +'<span class="small-muted">O hor&aacute;rio do registro fica separado.</span>'
+            +'<label>T&eacute;rmino real<input type="datetime-local" class="avanco-item-termino-input" value="'+esc(a.terminoReal||'')+'" onchange="avOnTerminoReal(this,\''+esc(a.id)+'\')"></label>'
+            +'<button type="button" onclick="avUsarTerminoPlanejado(\''+esc(a.id)+'\')">Usar t&eacute;rmino planejado</button>'
+            +'<span class="small-muted">Os hor&aacute;rios reais ficam separados do momento do registro.</span>'
           +'</div>'
           +'<textarea class="avanco-item-obs" placeholder="Observação / justificativa / ação (opcional)" onchange="avOnObs(this,\''+esc(a.id)+'\')">'+esc(a.obs||'')+'</textarea>'
         +'</div>'
@@ -8564,6 +8566,7 @@ body.admin-mode .admin-bar{border-color:#C7E6D3;background:#F5FAF7}
   window.avOnStatus = function(el, id){ markDirty(id); };
   window.avOnObs = function(el, id){ markDirty(id); };
   window.avOnInicioReal = function(el, id){ markDirty(id); };
+  window.avOnTerminoReal = function(el, id){ markDirty(id); };
   window.avUsarInicioPlanejado = function(id){
     const a = findAct(id);
     const item = document.querySelector('.avanco-item[data-id="'+CSS.escape(id)+'"]');
@@ -8574,6 +8577,18 @@ body.admin-mode .admin-bar{border-color:#C7E6D3;background:#F5FAF7}
       return;
     }
     input.value = String(a.inicio).slice(0,16);
+    markDirty(id);
+  };
+  window.avUsarTerminoPlanejado = function(id){
+    const a = findAct(id);
+    const item = document.querySelector('.avanco-item[data-id="'+CSS.escape(id)+'"]');
+    const input = item && item.querySelector('.avanco-item-termino-input');
+    if(!a || !input) return;
+    if(!a.termino){
+      alert('A atividade n\u00e3o possui t\u00e9rmino planejado.');
+      return;
+    }
+    input.value = String(a.termino).slice(0,16);
     markDirty(id);
   };
 
@@ -8593,8 +8608,10 @@ body.admin-mode .admin-bar{border-color:#C7E6D3;background:#F5FAF7}
     const obs = item.querySelector('.avanco-item-obs').value;
     const btn = item.querySelector('[data-save]');
     const inicioRealInput = item.querySelector('.avanco-item-inicio-input');
+    const terminoRealInput = item.querySelector('.avanco-item-termino-input');
     const inicioReal = String(inicioRealInput?.value||'').trim();
-    const terminoReal = (prog>=100 || status==='Conclu\u00edda') ? String(a.terminoReal||toLocalInput(refNow())) : '';
+    const concluida = prog>=100 || status==='Conclu\u00edda';
+    const terminoReal = concluida ? String(terminoRealInput?.value||'').trim() : '';
     const exigeInicioReal = prog>0 || status==='Em andamento' || status==='Conclu\u00edda';
     if(exigeInicioReal && !inicioReal){
       alert('Confirme o in\u00edcio real ou use o hor\u00e1rio planejado antes de salvar o avan\u00e7o.');
@@ -8602,6 +8619,17 @@ body.admin-mode .admin-bar{border-color:#C7E6D3;background:#F5FAF7}
       return;
     }
     if(inicioReal && isNaN(new Date(inicioReal).getTime())){ alert('Informe um in\u00edcio real v\u00e1lido.'); return; }
+    if(concluida && !terminoReal){
+      alert('Confirme o t\u00e9rmino real ou use o t\u00e9rmino planejado antes de concluir a atividade.');
+      if(terminoRealInput) terminoRealInput.focus();
+      return;
+    }
+    if(terminoReal && isNaN(new Date(terminoReal).getTime())){ alert('Informe um t\u00e9rmino real v\u00e1lido.'); return; }
+    if(inicioReal && terminoReal && new Date(terminoReal).getTime()<new Date(inicioReal).getTime()){
+      alert('O t\u00e9rmino real n\u00e3o pode ser anterior ao in\u00edcio real.');
+      if(terminoRealInput) terminoRealInput.focus();
+      return;
+    }
     if(btn){ btn.disabled=true; btn.textContent='Salvando...'; }
     try{
       if(typeof window.kaSaveDisciplineProgress!=='function') throw new Error('Sincronização do Firebase indisponível');
@@ -9563,8 +9591,9 @@ setInterval(function(){ try{ updateHeaderTimestamp(); }catch(e){} }, 30000);
   quickStatus=function(id,val){
     const a=activities.find(x=>x.id===id);if(!a)return;
     if((val==='Em andamento'||val==='Conclu\u00edda')&&!a.inicioReal){alert('Informe o in\u00edcio real antes de alterar o status.');renderAll();return;}
+    if(val==='Conclu\u00edda'&&!a.terminoReal){alert('Informe o t\u00e9rmino real antes de concluir a atividade.');renderAll();return;}
     a.autoProgress=false;a.status=val;a.ultimaAtualizacao=new Date().toISOString();
-    if(val==='Concluída'){a.progresso=100;if(!a.terminoReal)a.terminoReal=toLocalInput(refNow());}
+    if(val==='Concluída'){a.progresso=100;}
     if(val==='Não iniciada'&&clampPct(a.progresso)>=100)a.progresso=0;
     saveLocal();renderAll();
   };
@@ -9572,8 +9601,9 @@ setInterval(function(){ try{ updateHeaderTimestamp(); }catch(e){} }, 30000);
     const a=activities.find(x=>x.id===id);if(!a)return;
     const proximo=clampPct(val);
     if(proximo>0&&!a.inicioReal){alert('Informe o in\u00edcio real antes de registrar o avan\u00e7o.');renderAll();return;}
+    if(proximo>=100&&!a.terminoReal){alert('Informe o t\u00e9rmino real antes de concluir a atividade.');renderAll();return;}
     a.autoProgress=false;a.progresso=proximo;a.ultimaAtualizacao=new Date().toISOString();
-    if(a.progresso>=100){a.status='Concluída';if(!a.terminoReal)a.terminoReal=toLocalInput(refNow());}
+    if(a.progresso>=100){a.status='Concluída';}
     else if(a.status==='Concluída')a.status='Em andamento';
     saveLocal();renderAll();
   };
@@ -9612,7 +9642,8 @@ setInterval(function(){ try{ updateHeaderTimestamp(); }catch(e){} }, 30000);
     if(fim<ini||(!milestone&&fim<=ini)){alert(milestone?'O término do marco não pode ser anterior ao início.':'O término deve ser maior que o início. Para duração zero, selecione “Marco”.');return;}
     if(a.inicioReal&&a.terminoReal&&parseDate(a.terminoReal)<parseDate(a.inicioReal)){alert('O término real não pode ser anterior ao início real.');return;}
     if((a.progresso>0||a.status==='Em andamento'||a.status==='Conclu\u00edda')&&!a.inicioReal){alert('Informe o in\u00edcio real para atividades iniciadas.');return;}
-    if(a.status==='Concluída'||a.progresso>=100){a.status='Concluída';a.progresso=100;if(!a.terminoReal)a.terminoReal=toLocalInput(refNow());}
+    if((a.status==='Concluída'||a.progresso>=100)&&!a.terminoReal){alert('Informe o término real para concluir a atividade.');return;}
+    if(a.status==='Concluída'||a.progresso>=100){a.status='Concluída';a.progresso=100;}
     const wasEditing=!!$('editId').value, idx=activities.findIndex(x=>x.id===a.id);if(idx>=0)activities[idx]=a;else activities.push(a);
     saveLocal();resetForm();renderAll();
     if(keepInForm&&!wasEditing)showTab('inserir',findTabByText('Inserir'));else showTab('atividades',findTabByText('Atividades cadastradas'));
@@ -11145,7 +11176,7 @@ setInterval(function(){ try{ updateHeaderTimestamp(); }catch(e){} }, 30000);
   },30000);
 })();
 </script><datalist id="respBloqueioOptions"></datalist><datalist id="faseBloqueioOptions"></datalist><datalist id="seBloqueioOptions"></datalist>
-<script type="module" src="/shared-sync.js?v=20260802-4"></script>
+<script type="module" src="/shared-sync.js?v=20260804-5"></script>
 
 
 <script id="ka-firebase-shell">(function () {

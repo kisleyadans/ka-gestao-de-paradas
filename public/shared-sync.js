@@ -624,9 +624,12 @@ import {
     const needsActualStart = progress > 0 || status === "Em andamento" || status === "Conclu\u00edda";
     if (needsActualStart && !actualStart) throw new Error("Confirme o in\u00edcio real antes de registrar o avan\u00e7o");
     const completed = progress >= 100 || status === "Conclu\u00edda";
-    const nowLocal = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16);
     const actualFinish = completed
-      ? String(patch?.terminoReal || activity.terminoReal || nowLocal).slice(0, 40) : "";
+      ? String(patch?.terminoReal || activity.terminoReal || "").slice(0, 40) : "";
+    if (completed && !actualFinish) throw new Error("Confirme o t\u00e9rmino real antes de concluir a atividade");
+    if (actualStart && actualFinish && new Date(actualFinish).getTime() < new Date(actualStart).getTime()) {
+      throw new Error("O t\u00e9rmino real n\u00e3o pode ser anterior ao in\u00edcio real");
+    }
     const progressDoc = doc(progressRef, encodeURIComponent(String(activity.id)));
     setStatus(`Salvando avanço de ${activity.disciplina}...`, "pending");
     try {
