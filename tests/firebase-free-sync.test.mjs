@@ -5,6 +5,8 @@ import {
   applyExclusiveActivityChange,
   bucketId,
   buildBuckets,
+  collectActivityChanges,
+  confirmActivityChanges,
   disciplineEmail,
   isAuthorizedDisciplineProgress,
   mergeActivityChange,
@@ -105,6 +107,25 @@ test("aceita edicoes rapidas do mesmo operador sem conflito no carimbo", () => {
   assert.equal(result.entry.activity.ultimaAtualizacao, "2026-07-19T20:00:02.000Z");
 });
 
+test("mesma sessao pode substituir rapidamente o mesmo campo", () => {
+  const currentEntry = {
+    id: "ATV-SESSAO",
+    activity: { id: "ATV-SESSAO", progresso: 40, status: "Em andamento" },
+    position: 0,
+    revision: 3,
+  };
+  const result = applyExclusiveActivityChange(currentEntry, {
+    id: "ATV-SESSAO",
+    base: { id: "ATV-SESSAO", progresso: 20, status: "Em andamento" },
+    next: { id: "ATV-SESSAO", progresso: 60, status: "Em andamento" },
+    position: 0,
+  });
+
+  assert.equal(result.accepted, true);
+  assert.equal(result.entry.activity.progresso, 60);
+  assert.equal(result.entry.revision, 4);
+});
+
 test("modo exclusivo aceita exclusao mesmo depois de uma gravacao anterior", () => {
   const currentEntry = {
     id: "ATV-EXCLUIR",
@@ -121,6 +142,20 @@ test("modo exclusivo aceita exclusao mesmo depois de uma gravacao anterior", () 
 
   assert.equal(result.accepted, true);
   assert.equal(result.deleted, true);
+});
+
+test("atividade criada pode ser excluida antes do retorno em tempo real", () => {
+  const activity = { id: "ATV-NOVA", atividade: "Teste", progresso: 0 };
+  let baseline = new Map();
+  const creation = collectActivityChanges([activity], baseline);
+  assert.equal(creation.length, 1);
+  assert.equal(creation[0].deleted, false);
+
+  baseline = confirmActivityChanges(baseline, creation);
+  const deletion = collectActivityChanges([], baseline);
+  assert.equal(deletion.length, 1);
+  assert.equal(deletion[0].id, activity.id);
+  assert.equal(deletion[0].deleted, true);
 });
 
 test("preserva instantâneos de progresso feitos por pessoas diferentes", () => {

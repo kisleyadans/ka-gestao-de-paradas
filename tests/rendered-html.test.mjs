@@ -26,7 +26,7 @@ test("inclui a sincronização gratuita e concorrente no painel publicado", asyn
     readFile(new URL("../firestore.rules", import.meta.url), "utf8"),
   ]);
 
-  assert.match(panel, /<script[^>]*src="\/shared-sync\.js\?v=20260804-7"[^>]*><\/script>/i);
+  assert.match(panel, /<script[^>]*src="\/shared-sync\.js\?v=20260804-8"[^>]*><\/script>/i);
   assert.match(panel, /<script id="pcm-initial-access-mode">/i);
   assert.match(panel, /<script id="ka-blank-project-v2">/i);
   assert.match(panel, /ka_project_database_generation/);
@@ -94,7 +94,12 @@ test("inclui a sincronização gratuita e concorrente no painel publicado", asyn
   assert.match(panel, /quickProgress=async function/);
   assert.match(panel, /quickActualField=async function/);
   assert.match(sync, /const shouldSaveActivities = pendingActivitySave/);
-  assert.match(sync, /shouldSaveActivities \? collectActivityChanges\(\) : \[\]/);
+  assert.match(sync, /collectActivityChanges\(window\.activities, baselineActivities\)/);
+  assert.match(sync, /baselineActivities = confirmActivityChanges\(baselineActivities, changes\)/);
+  assert.match(sync, /transaction\.delete\(doc\(progressRef/);
+  assert.match(panel, /async function deleteActivity\(id\)/);
+  assert.match(panel, /await window\.kaSaveSharedNow\(\)/);
+  assert.match(panel, /A atividade não foi excluída porque o Firebase não confirmou/);
   assert.match(sync, /scheduleSave\(delay, name === "saveLocal"\)/);
   assert.match(rules, /"inicioReal"/);
   assert.doesNotMatch(panel, /areaList\.filter\(a=>validActivity\(a\)/);
