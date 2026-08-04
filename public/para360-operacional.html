@@ -5522,10 +5522,25 @@ function editActivity(id){
   showTab('inserir', findTabByText('Inserir'));
   window.scrollTo({top:0,behavior:'smooth'});
 }
-function deleteActivity(id){
+async function deleteActivity(id){
   if(!confirm('Excluir esta atividade?')) return;
-  activities=activities.filter(a=>a.id!==id);
-  saveLocal(); renderAll();
+  const index=activities.findIndex(a=>a.id===id);
+  if(index<0) return;
+  const removed=activities[index];
+  activities.splice(index,1);
+  saveLocal();
+  renderAll();
+  if(typeof window.kaSaveSharedNow!=='function') return;
+  try{
+    await window.kaSaveSharedNow();
+    if(typeof window.showSaveToast==='function') window.showSaveToast('✓ Atividade excluída e confirmada online');
+  }catch(error){
+    console.error('Activity deletion failed',error);
+    activities.splice(Math.min(index,activities.length),0,removed);
+    localStorage.setItem('painel_parada_atividades',JSON.stringify(activities));
+    renderAll();
+    alert('A atividade não foi excluída porque o Firebase não confirmou a gravação. Ela foi restaurada para evitar perda de dados.');
+  }
 }
 function resetForm(){
   ['disciplina','area','equipamento','atividade','responsavel','inicio','termino','hh','obs','acao'].forEach(id=>$(id).value='');
@@ -11208,7 +11223,7 @@ setInterval(function(){ try{ updateHeaderTimestamp(); }catch(e){} }, 30000);
   },30000);
 })();
 </script><datalist id="respBloqueioOptions"></datalist><datalist id="faseBloqueioOptions"></datalist><datalist id="seBloqueioOptions"></datalist>
-<script type="module" src="/shared-sync.js?v=20260804-7"></script>
+<script type="module" src="/shared-sync.js?v=20260804-8"></script>
 
 
 <script id="ka-firebase-shell">(function () {

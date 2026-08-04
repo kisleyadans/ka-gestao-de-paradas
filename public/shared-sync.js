@@ -18,6 +18,8 @@ import {
 import {
   BUCKET_COUNT,
   applyExclusiveActivityChange,
+  collectActivityChanges,
+  confirmActivityChanges,
   mergeActivityChange,
   mergeSharedState,
   bucketId,
@@ -409,32 +411,6 @@ import {
     }
   }
 
-  function collectActivityChanges() {
-    const current = new Map();
-    (Array.isArray(window.activities) ? window.activities : []).forEach((activity, position) => {
-      current.set(activity.id, { activity: clone(activity), position });
-    });
-    const changes = [];
-    current.forEach((entry, id) => {
-      const baseline = baselineActivities.get(id);
-      if (!baseline || !same(baseline.activity, entry.activity)) {
-        changes.push({
-          id,
-          base: baseline ? clone(baseline.activity) : null,
-          next: entry.activity,
-          deleted: false,
-          position: entry.position,
-        });
-      }
-    });
-    baselineActivities.forEach((baseline, id) => {
-      if (!current.has(id)) {
-        changes.push({ id, base: clone(baseline.activity), next: null, deleted: true, position: 0 });
-      }
-    });
-    return changes;
-  }
-
   async function saveActivityChanges(changes) {
     if (changes.length === 0) return { conflicts: [] };
     const grouped = new Map();
@@ -474,6 +450,7 @@ import {
               entries.splice(index, 1);
               changed = true;
             }
+            transaction.delete(doc(progressRef, encodeURIComponent(String(change.id))));
           } else if (index >= 0) {
             entries[index] = result.entry;
             changed = true;
@@ -540,11 +517,16 @@ import {
     setStatus("Sincronizando alterações...", "pending");
     let saveFailed = false;
     try {
-      const changes = shouldSaveActivities ? collectActivityChanges() : [];
+      const changes = shouldSaveActivities
+        ? collectActivityChanges(window.activities, baselineActivities)
+        : [];
       const currentShared = sharedPart(buildState());
       const activityResult = shouldSaveActivities
         ? await saveActivityChanges(changes)
         : { conflicts: [] };
+      if (shouldSaveActivities && activityResult.conflicts.length === 0) {
+        baselineActivities = confirmActivityChanges(baselineActivities, changes);
+      }
       const sharedResult = await saveSharedChanges(currentShared);
       const conflicts = [...activityResult.conflicts, ...sharedResult.conflicts];
       if (conflicts.length > 0) {

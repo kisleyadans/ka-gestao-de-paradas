@@ -91,6 +91,51 @@ export function buildBuckets(items) {
   return buckets;
 }
 
+export function collectActivityChanges(currentItems, baselineEntries) {
+  const baseline = baselineEntries instanceof Map ? baselineEntries : new Map();
+  const current = new Map();
+  (Array.isArray(currentItems) ? currentItems : []).forEach((activity, position) => {
+    const normalized = normalizeActivity(activity);
+    if (normalized.id) current.set(normalized.id, { activity: normalized, position });
+  });
+  const changes = [];
+  current.forEach((entry, id) => {
+    const previous = baseline.get(id);
+    if (!previous || !same(previous.activity, entry.activity)) {
+      changes.push({
+        id,
+        base: previous ? clone(previous.activity) : null,
+        next: clone(entry.activity),
+        deleted: false,
+        position: entry.position,
+      });
+    }
+  });
+  baseline.forEach((previous, id) => {
+    if (!current.has(id)) {
+      changes.push({ id, base: clone(previous.activity), next: null, deleted: true, position: 0 });
+    }
+  });
+  return changes;
+}
+
+// O retorno em tempo real pode chegar alguns instantes depois da transacao.
+// Registre localmente criacoes e exclusoes ja confirmadas para que uma acao
+// imediata sobre o mesmo item nao desapareca nesse intervalo.
+export function confirmActivityChanges(baselineEntries, changes) {
+  const confirmed = new Map(baselineEntries instanceof Map ? baselineEntries : []);
+  (Array.isArray(changes) ? changes : []).forEach((change) => {
+    const id = String(change?.id || "");
+    if (!id) return;
+    if (change.deleted) {
+      confirmed.delete(id);
+    } else if (!confirmed.has(id) && change.next) {
+      confirmed.set(id, { activity: normalizeActivity(change.next), revision: 1 });
+    }
+  });
+  return confirmed;
+}
+
 export function changedFields(base, next) {
   const keys = new Set([...Object.keys(base || {}), ...Object.keys(next || {})]);
   keys.delete("id");
