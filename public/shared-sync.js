@@ -609,13 +609,13 @@ import {
     const status = String(patch?.status || "Não iniciada");
     const observation = String(patch?.obs || "").slice(0, 4000);
     const updater = String(patch?.updatedBy || disciplineSession?.name || operatorName || "Editor").slice(0, 80);
-    const actualStart = String(patch?.inicioReal || activity.inicioReal || "").slice(0, 40);
     const needsActualStart = progress > 0 || status === "Em andamento" || status === "Conclu\u00edda";
-    if (needsActualStart && !actualStart) throw new Error("Confirme o in\u00edcio real antes de registrar o avan\u00e7o");
+    const actualStart = needsActualStart
+      ? String(patch?.inicioReal || activity.inicioReal || activity.inicio || "").slice(0, 40)
+      : String(patch?.inicioReal || activity.inicioReal || "").slice(0, 40);
     const completed = progress >= 100 || status === "Conclu\u00edda";
     const actualFinish = completed
-      ? String(patch?.terminoReal || activity.terminoReal || "").slice(0, 40) : "";
-    if (completed && !actualFinish) throw new Error("Confirme o t\u00e9rmino real antes de concluir a atividade");
+      ? String(patch?.terminoReal || activity.terminoReal || activity.termino || "").slice(0, 40) : "";
     if (actualStart && actualFinish && new Date(actualFinish).getTime() < new Date(actualStart).getTime()) {
       throw new Error("O t\u00e9rmino real n\u00e3o pode ser anterior ao in\u00edcio real");
     }

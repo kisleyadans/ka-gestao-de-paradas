@@ -8569,7 +8569,7 @@ body.admin-mode .admin-bar{border-color:#C7E6D3;background:#F5FAF7}
             +'<button type="button" onclick="avUsarInicioPlanejado(\''+esc(a.id)+'\')">Usar in&iacute;cio planejado</button>'
             +'<label>T&eacute;rmino real<input type="datetime-local" class="avanco-item-termino-input" value="'+esc(a.terminoReal||'')+'" onchange="avOnTerminoReal(this,\''+esc(a.id)+'\')"></label>'
             +'<button type="button" onclick="avUsarTerminoPlanejado(\''+esc(a.id)+'\')">Usar t&eacute;rmino planejado</button>'
-            +'<span class="small-muted">Os hor&aacute;rios reais ficam separados do momento do registro.</span>'
+            +'<span class="small-muted">Opcional: sem preenchimento, o sistema usa automaticamente os hor&aacute;rios programados como base.</span>'
           +'</div>'
           +'<textarea class="avanco-item-obs" placeholder="Observação / justificativa / ação (opcional)" onchange="avOnObs(this,\''+esc(a.id)+'\')">'+esc(a.obs||'')+'</textarea>'
         +'</div>'
@@ -8652,21 +8652,19 @@ body.admin-mode .admin-bar{border-color:#C7E6D3;background:#F5FAF7}
     const btn = item.querySelector('[data-save]');
     const inicioRealInput = item.querySelector('.avanco-item-inicio-input');
     const terminoRealInput = item.querySelector('.avanco-item-termino-input');
-    const inicioReal = String(inicioRealInput?.value||'').trim();
     const concluida = prog>=100 || status==='Conclu\u00edda';
-    const terminoReal = concluida ? String(terminoRealInput?.value||'').trim() : '';
     const exigeInicioReal = prog>0 || status==='Em andamento' || status==='Conclu\u00edda';
-    if(exigeInicioReal && !inicioReal){
-      alert('Confirme o in\u00edcio real ou use o hor\u00e1rio planejado antes de salvar o avan\u00e7o.');
-      if(inicioRealInput) inicioRealInput.focus();
-      return;
-    }
+    const inicioRealInformado = String(inicioRealInput?.value||'').trim();
+    const terminoRealInformado = String(terminoRealInput?.value||'').trim();
+    const inicioReal = exigeInicioReal
+      ? String(inicioRealInformado||a.inicioReal||a.inicio||'').slice(0,16)
+      : String(inicioRealInformado||a.inicioReal||'').slice(0,16);
+    const terminoReal = concluida
+      ? String(terminoRealInformado||a.terminoReal||a.termino||'').slice(0,16)
+      : '';
+    if(inicioRealInput) inicioRealInput.value=inicioReal;
+    if(terminoRealInput) terminoRealInput.value=terminoReal;
     if(inicioReal && isNaN(new Date(inicioReal).getTime())){ alert('Informe um in\u00edcio real v\u00e1lido.'); return; }
-    if(concluida && !terminoReal){
-      alert('Confirme o t\u00e9rmino real ou use o t\u00e9rmino planejado antes de concluir a atividade.');
-      if(terminoRealInput) terminoRealInput.focus();
-      return;
-    }
     if(terminoReal && isNaN(new Date(terminoReal).getTime())){ alert('Informe um t\u00e9rmino real v\u00e1lido.'); return; }
     if(inicioReal && terminoReal && new Date(terminoReal).getTime()<new Date(inicioReal).getTime()){
       alert('O t\u00e9rmino real n\u00e3o pode ser anterior ao in\u00edcio real.');
@@ -9661,18 +9659,25 @@ setInterval(function(){ try{ updateHeaderTimestamp(); }catch(e){} }, 30000);
 
   quickStatus=async function(id,val){
     const a=activities.find(x=>x.id===id);if(!a)return;
-    if((val==='Em andamento'||val==='Conclu\u00edda')&&!a.inicioReal){alert('Informe o in\u00edcio real antes de alterar o status.');renderAll();return;}
-    if(val==='Conclu\u00edda'&&!a.terminoReal){alert('Informe o t\u00e9rmino real antes de concluir a atividade.');renderAll();return;}
     const progresso=val==='Concluída'?100:(val==='Não iniciada'&&clampPct(a.progresso)>=100?0:clampPct(a.progresso));
-    await saveAdminProgressOnline(a,{status:val,progresso,terminoReal:val==='Não iniciada'?'':String(a.terminoReal||'')});
+    const iniciada=progresso>0||val==='Em andamento'||val==='Concluída';
+    await saveAdminProgressOnline(a,{
+      status:val,
+      progresso,
+      inicioReal:iniciada?String(a.inicioReal||a.inicio||''):String(a.inicioReal||''),
+      terminoReal:val==='Concluída'?String(a.terminoReal||a.termino||''):''
+    });
   };
   quickProgress=async function(id,val){
     const a=activities.find(x=>x.id===id);if(!a)return;
     const proximo=clampPct(val);
-    if(proximo>0&&!a.inicioReal){alert('Informe o in\u00edcio real antes de registrar o avan\u00e7o.');renderAll();return;}
-    if(proximo>=100&&!a.terminoReal){alert('Informe o t\u00e9rmino real antes de concluir a atividade.');renderAll();return;}
     const status=proximo>=100?'Concluída':(a.status==='Concluída'?'Em andamento':a.status);
-    await saveAdminProgressOnline(a,{progresso:proximo,status,terminoReal:proximo>=100?String(a.terminoReal||''):''});
+    await saveAdminProgressOnline(a,{
+      progresso:proximo,
+      status,
+      inicioReal:proximo>0?String(a.inicioReal||a.inicio||''):String(a.inicioReal||''),
+      terminoReal:proximo>=100?String(a.terminoReal||a.termino||''):''
+    });
   };
   quickInicio=function(id,val){const a=activities.find(x=>x.id===id);if(!a)return;a.inicio=val;a.autoProgress=false;saveLocal();renderAll();};
   quickTermino=function(id,val){const a=activities.find(x=>x.id===id);if(!a)return;a.termino=val;a.autoProgress=false;saveLocal();renderAll();};
@@ -9716,10 +9721,12 @@ setInterval(function(){ try{ updateHeaderTimestamp(); }catch(e){} }, 30000);
     const a={id:$('editId').value||uid(),disciplina:cleanText($('disciplina').value)||'Não informado',area:cleanText($('area').value)||'Não informado',equipamento:cleanText($('equipamento').value),atividade:cleanText($('atividade').value),responsavel:cleanText($('responsavel').value),inicio:$('inicio').value,termino:$('termino').value,inicioReal:$('inicioReal').value,terminoReal:$('terminoReal').value,marco:milestone?'Sim':'Não',status:$('status').value,progresso:clampPct($('progresso').value),criticidade:$('criticidade').value,extraEscopo:$('extraEscopo').value,caminhoCritico:$('caminhoCritico').value,hh:Number($('hh').value||0),duracaoRestanteMin:rem===''?null:Math.max(0,Number(rem)*60),obs:cleanText($('obs').value),acao:cleanText($('acao').value),autoProgress:false,ultimaAtualizacao:new Date().toISOString()};
     if(!a.atividade||!ini||!fim){alert('Informe atividade, início e término planejados.');return;}
     if(fim<ini||(!milestone&&fim<=ini)){alert(milestone?'O término do marco não pode ser anterior ao início.':'O término deve ser maior que o início. Para duração zero, selecione “Marco”.');return;}
+    const iniciada=a.progresso>0||a.status==='Em andamento'||a.status==='Concluída';
+    const concluida=a.status==='Concluída'||a.progresso>=100;
+    if(iniciada&&!a.inicioReal)a.inicioReal=a.inicio||'';
+    if(concluida&&!a.terminoReal)a.terminoReal=a.termino||'';
     if(a.inicioReal&&a.terminoReal&&parseDate(a.terminoReal)<parseDate(a.inicioReal)){alert('O término real não pode ser anterior ao início real.');return;}
-    if((a.progresso>0||a.status==='Em andamento'||a.status==='Conclu\u00edda')&&!a.inicioReal){alert('Informe o in\u00edcio real para atividades iniciadas.');return;}
-    if((a.status==='Concluída'||a.progresso>=100)&&!a.terminoReal){alert('Informe o término real para concluir a atividade.');return;}
-    if(a.status==='Concluída'||a.progresso>=100){a.status='Concluída';a.progresso=100;}
+    if(concluida){a.status='Concluída';a.progresso=100;}
     const wasEditing=!!$('editId').value, idx=activities.findIndex(x=>x.id===a.id);if(idx>=0)activities[idx]=a;else activities.push(a);
     saveLocal();resetForm();renderAll();
     if(keepInForm&&!wasEditing)showTab('inserir',findTabByText('Inserir'));else showTab('atividades',findTabByText('Atividades cadastradas'));
@@ -11252,7 +11259,7 @@ setInterval(function(){ try{ updateHeaderTimestamp(); }catch(e){} }, 30000);
   },30000);
 })();
 </script><datalist id="respBloqueioOptions"></datalist><datalist id="faseBloqueioOptions"></datalist><datalist id="seBloqueioOptions"></datalist>
-<script type="module" src="/shared-sync.js?v=20260804-9"></script>
+<script type="module" src="/shared-sync.js?v=20260805-1"></script>
 
 
 <script id="ka-firebase-shell">(function () {
