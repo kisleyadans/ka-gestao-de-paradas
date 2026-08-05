@@ -26,7 +26,7 @@ test("inclui a sincronização gratuita e concorrente no painel publicado", asyn
     readFile(new URL("../firestore.rules", import.meta.url), "utf8"),
   ]);
 
-  assert.match(panel, /<script[^>]*src="\/shared-sync\.js\?v=20260804-9"[^>]*><\/script>/i);
+  assert.match(panel, /<script[^>]*src="\/shared-sync\.js\?v=20260805-1"[^>]*><\/script>/i);
   assert.match(panel, /<script id="pcm-initial-access-mode">/i);
   assert.match(panel, /<script id="ka-blank-project-v2">/i);
   assert.match(panel, /ka_project_database_generation/);
@@ -84,13 +84,17 @@ test("inclui a sincronização gratuita e concorrente no painel publicado", asyn
   assert.match(panel, /avUsarInicioPlanejado/);
   assert.match(panel, /class="avanco-item-termino-input"/);
   assert.match(panel, /avUsarTerminoPlanejado/);
-  assert.match(panel, /Confirme o in\\u00edcio real/);
-  assert.match(panel, /Confirme o t\\u00e9rmino real/);
+  assert.doesNotMatch(panel, /Confirme o in\\u00edcio real/);
+  assert.doesNotMatch(panel, /Confirme o t\\u00e9rmino real/);
+  assert.match(panel, /inicioRealInformado\|\|a\.inicioReal\|\|a\.inicio/);
+  assert.match(panel, /terminoRealInformado\|\|a\.terminoReal\|\|a\.termino/);
   assert.doesNotMatch(panel, /if\(a\.progresso>0&&!a\.inicioReal\)a\.inicioReal=toLocalInput\(refNow\(\)\)/);
   assert.doesNotMatch(panel, /terminoReal\|\|toLocalInput\(refNow\(\)\)/);
   assert.doesNotMatch(panel, /if\(!a\.terminoReal\)a\.terminoReal=toLocalInput\(refNow\(\)\)/);
   assert.match(sync, /inicioReal: actualStart/);
-  assert.match(sync, /completed && !actualFinish/);
+  assert.match(sync, /activity\.inicioReal \|\| activity\.inicio/);
+  assert.match(sync, /activity\.terminoReal \|\| activity\.termino/);
+  assert.doesNotMatch(sync, /completed && !actualFinish/);
   assert.doesNotMatch(sync, /activity\.terminoReal \|\| nowLocal/);
   assert.match(sync, /let pendingActivitySave = false/);
   assert.match(panel, /async function saveAdminProgressOnline/);
