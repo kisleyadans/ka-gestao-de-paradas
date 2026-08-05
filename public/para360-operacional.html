@@ -3695,6 +3695,12 @@
             <label style="font-size:11px;font-weight:700;color:#40506A">Equipamento</label>
             <input id="avEquipamento" type="search" placeholder="Pesquisar equipamento..." oninput="avRender()">
           </div>
+          <div id="avDisciplinaWrap" class="admin-hide" style="min-width:180px">
+            <label style="font-size:11px;font-weight:700;color:#40506A">Disciplina</label>
+            <select id="avDisciplina" onchange="avOnDisciplinaFiltro()">
+              <option value="all">Todas as disciplinas</option>
+            </select>
+          </div>
           <div style="min-width:170px">
             <label style="font-size:11px;font-weight:700;color:#40506A">&Aacute;rea</label>
             <select id="avArea" onchange="avRender()">
@@ -8454,16 +8460,36 @@ body.admin-mode .admin-bar{border-color:#C7E6D3;background:#F5FAF7}
   }
 
   // === Renderização da lista ===
+  function avPopularFiltroDisciplina(){
+    const select = document.getElementById('avDisciplina');
+    if(!select) return;
+    const atual = select.value || 'all';
+    const disciplinas = Array.from(new Set(atividadesDaSup().map(a=>String(a.disciplina||'').trim()).filter(Boolean)))
+      .sort((a,b)=>a.localeCompare(b,'pt-BR'));
+    select.innerHTML = '<option value="all">Todas as disciplinas</option>'
+      + disciplinas.map(disciplina=>'<option value="'+esc(disciplina)+'">'+esc(disciplina)+'</option>').join('');
+    select.value = disciplinas.includes(atual) ? atual : 'all';
+  }
+
   function avPopularFiltroArea(){
     const select = document.getElementById('avArea');
     if(!select) return;
     const atual = select.value || 'all';
-    const areas = Array.from(new Set(atividadesDaSup().map(a=>String(a.area||'').trim()).filter(Boolean)))
+    const disciplina = isAdmin() ? (document.getElementById('avDisciplina')?.value || 'all') : 'all';
+    const base = disciplina==='all'
+      ? atividadesDaSup()
+      : atividadesDaSup().filter(a=>String(a.disciplina||'')===disciplina);
+    const areas = Array.from(new Set(base.map(a=>String(a.area||'').trim()).filter(Boolean)))
       .sort((a,b)=>a.localeCompare(b,'pt-BR'));
     select.innerHTML = '<option value="all">Todas as &aacute;reas</option>'
       + areas.map(area=>'<option value="'+esc(area)+'">'+esc(area)+'</option>').join('');
     select.value = areas.includes(atual) ? atual : 'all';
   }
+
+  window.avOnDisciplinaFiltro = function(){
+    avPopularFiltroArea();
+    avRender();
+  };
 
   window.avRender = function(){
     const cont = document.getElementById('avancoLista');
@@ -8472,10 +8498,12 @@ body.admin-mode .admin-bar{border-color:#C7E6D3;background:#F5FAF7}
     let lista = atividadesDaSup();
     const busca = (document.getElementById('avBusca').value||'').toLowerCase().trim();
     const equipamento = (document.getElementById('avEquipamento')?.value||'').toLowerCase().trim();
+    const disciplina = isAdmin() ? (document.getElementById('avDisciplina')?.value || 'all') : 'all';
     const area = document.getElementById('avArea')?.value || 'all';
     if(equipamento) lista = lista.filter(a=>
       String(a.equipamento||'').toLowerCase().includes(equipamento)
     );
+    if(disciplina!=='all') lista = lista.filter(a=>String(a.disciplina||'')===disciplina);
     if(area!=='all') lista = lista.filter(a=>String(a.area||'')===area);
     const filtro = document.getElementById('avFiltro').value;
     if(busca) lista = lista.filter(a=>
@@ -8699,6 +8727,7 @@ body.admin-mode .admin-bar{border-color:#C7E6D3;background:#F5FAF7}
       document.getElementById('avUserAvatar').textContent = supAtual.icone || '👤';
       document.getElementById('avUserNome').textContent = supAtual.nome;
       document.getElementById('avUserDisciplinas').textContent = 'Disciplinas: ' + (supAtual.disciplinas||[]).join(', ');
+      avPopularFiltroDisciplina();
       avPopularFiltroArea();
       renderStats();
       avRender();
