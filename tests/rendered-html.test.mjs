@@ -50,8 +50,13 @@ test("inclui a sincronização gratuita e concorrente no painel publicado", asyn
   assert.match(panel, /Sair Admin/);
   assert.match(rules, /isSharedEditor/);
   assert.match(panel, /id="avEquipamento"/);
+  assert.match(panel, /id="avDisciplinaWrap" class="admin-hide"/);
+  assert.match(panel, /id="avDisciplina"/);
   assert.match(panel, /id="avArea"/);
+  assert.match(panel, /avPopularFiltroDisciplina/);
   assert.match(panel, /avPopularFiltroArea/);
+  assert.match(panel, /window\.avOnDisciplinaFiltro/);
+  assert.match(panel, /if\(disciplina!==\'all\'\) lista = lista\.filter\(a=>String\(a\.disciplina\|\|\'\'\)===disciplina\)/);
   assert.match(panel, /String\(a\.equipamento\|\|''\)\.toLowerCase\(\)\.includes\(equipamento\)/);
   assert.match(rules, /allow read: if true/);
   assert.match(rules, /hasAuditMetadata/);
