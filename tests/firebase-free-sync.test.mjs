@@ -12,6 +12,7 @@ import {
   mergeActivityChange,
   mergeKeyedCollection,
   mergeSharedState,
+  progressGroupId,
   resolveActivityChange,
 } from "../public/firebase-sync-core.mjs";
 
@@ -39,6 +40,14 @@ test("divide atividades em blocos determinísticos para economizar leituras", ()
   assert.ok(buckets.size <= BUCKET_COUNT);
   assert.equal(Array.from(buckets.values()).flat().length, activities.length);
   assert.equal(bucketId("ATV-0001"), bucketId("ATV-0001"));
+});
+
+test("agrupa avanços por disciplina em poucos documentos determinísticos", () => {
+  const ids = Array.from({ length: 500 }, (_, index) => `ATV-${index + 1}`);
+  const groups = new Set(ids.map((id) => progressGroupId("Elétrica", id)));
+  assert.ok(groups.size <= 8);
+  assert.equal(progressGroupId("Elétrica", "ATV-1"), progressGroupId("ELÉTRICA", "ATV-1"));
+  assert.match(progressGroupId("Elétrica", "ATV-1"), /^ELETRICA--\d{2}$/);
 });
 
 test("mescla campos diferentes e protege alteração simultânea no mesmo campo", () => {

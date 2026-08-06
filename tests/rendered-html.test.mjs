@@ -26,7 +26,7 @@ test("inclui a sincronização gratuita e concorrente no painel publicado", asyn
     readFile(new URL("../firestore.rules", import.meta.url), "utf8"),
   ]);
 
-  assert.match(panel, /<script[^>]*src="\/shared-sync\.js\?v=20260805-1"[^>]*><\/script>/i);
+  assert.match(panel, /<script[^>]*src="\/shared-sync\.js\?v=20260806-1"[^>]*><\/script>/i);
   assert.match(panel, /<script id="pcm-initial-access-mode">/i);
   assert.match(panel, /<script id="ka-blank-project-v2">/i);
   assert.match(panel, /ka_project_database_generation/);
@@ -105,7 +105,7 @@ test("inclui a sincronização gratuita e concorrente no painel publicado", asyn
   assert.match(sync, /const shouldSaveActivities = pendingActivitySave/);
   assert.match(sync, /collectActivityChanges\(window\.activities, baselineActivities\)/);
   assert.match(sync, /baselineActivities = confirmActivityChanges\(baselineActivities, changes\)/);
-  assert.match(sync, /Promise\.allSettled\(deletedIds/);
+  assert.match(sync, /Promise\.allSettled\(deletedChanges/);
   assert.match(panel, /async function deleteActivity\(id\)/);
   assert.match(panel, /await window\.kaSaveSharedNow\(\)/);
   assert.match(panel, /A atividade não foi excluída porque o Firebase não confirmou/);
@@ -119,4 +119,12 @@ test("inclui a sincronização gratuita e concorrente no painel publicado", asyn
   assert.match(panel, /useSnapshotHistory\?\(window\.pcmProgressSnapshots\|\|\[\]\):\[\]/);
   assert.match(panel, /id="pcmDataQualityBanner" class="pcm-data-banner admin-hide"/);
   assert.match(panel, /b\.className='pcm-data-banner admin-hide '/);
+  assert.match(panel, /const avRascunhos = new Map\(\)/);
+  assert.match(panel, /window\.kaAvancoHasPendingEdits/);
+  assert.match(panel, /avCapturarRascunho\(id\)/);
+  assert.match(sync, /persistentMultipleTabManager/);
+  assert.match(sync, /ka_discipline_progress_groups_v3/);
+  assert.match(sync, /migrateLegacyProgress/);
+  assert.match(sync, /window\.kaReleasePendingRemote = applyAvailableRemote/);
+  assert.match(rules, /match \/ka_discipline_progress_groups_v3/);
 });
