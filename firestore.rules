@@ -59,6 +59,29 @@ service cloud.firestore {
       allow delete: if isSharedEditor();
     }
 
+    // Modo economico: poucos blocos por disciplina substituem centenas de
+    // documentos individuais. A colecao v2 permanece como recuperacao.
+    match /ka_discipline_progress_groups_v3/{document} {
+      allow read: if true;
+      allow create, update: if request.auth != null
+        && request.resource.data.keys().hasOnly([
+          "disciplineKey", "disciplineName", "editorEmail", "entries",
+          "updatedBy", "editorSessionId", "updatedAt"
+        ])
+        && request.resource.data.disciplineKey is string
+        && request.resource.data.disciplineName is string
+        && request.resource.data.editorEmail is string
+        && request.resource.data.entries is list
+        && request.resource.data.entries.size() <= 250
+        && request.resource.data.updatedBy is string
+        && request.resource.data.updatedBy.size() > 0
+        && request.resource.data.editorSessionId is string
+        && request.resource.data.editorSessionId.size() > 0
+        && request.resource.data.updatedAt == request.time
+        && (isSharedEditor() || request.resource.data.editorEmail == request.auth.token.email);
+      allow delete: if isSharedEditor();
+    }
+
     // Documentos antigos da trava são mantidos inacessíveis e deixam de ser
     // usados pela aplicação. Isso evita depender de uma limpeza destrutiva.
     match /ka_editor_lock/{document} {
