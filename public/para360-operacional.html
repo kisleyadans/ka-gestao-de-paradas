@@ -8460,6 +8460,25 @@ body.admin-mode .admin-bar{border-color:#C7E6D3;background:#F5FAF7}
   }
 
   // === Renderização da lista ===
+  // Rascunhos ficam fora do DOM para sobreviver a sincronizacoes e redesenhos.
+  const avRascunhos = new Map();
+  function avLerRascunho(id){ return avRascunhos.get(String(id)) || null; }
+  function avCapturarRascunho(id){
+    const item = document.querySelector('.avanco-item[data-id="'+CSS.escape(String(id))+'"]');
+    if(!item) return avLerRascunho(id);
+    const draft = {
+      progresso: Math.max(0,Math.min(100,parseInt(item.querySelector('.avanco-item-input')?.value||'0',10)||0)),
+      status: item.querySelector('.avanco-item-status')?.value || 'N\u00e3o iniciada',
+      obs: item.querySelector('.avanco-item-obs')?.value || '',
+      inicioReal: item.querySelector('.avanco-item-inicio-input')?.value || '',
+      terminoReal: item.querySelector('.avanco-item-termino-input')?.value || ''
+    };
+    avRascunhos.set(String(id),draft);
+    return draft;
+  }
+  window.kaAvancoHasPendingEdits = function(){ return avRascunhos.size>0; };
+  window.kaAvancoPendingCount = function(){ return avRascunhos.size; };
+
   function avPopularFiltroDisciplina(){
     const select = document.getElementById('avDisciplina');
     if(!select) return;
@@ -8536,9 +8555,11 @@ body.admin-mode .admin-bar{border-color:#C7E6D3;background:#F5FAF7}
     }
 
     cont.innerHTML = lista.map(a=>{
-      const stCls = statusClass(a);
-      const st = window.getEffectiveStatus ? window.getEffectiveStatus(a) : (a.status||'Não iniciada');
-      const prog = Number(a.progresso||0);
+      const draft = avLerRascunho(a.id);
+      const exibida = draft ? Object.assign({},a,draft) : a;
+      const stCls = statusClass(exibida);
+      const st = window.getEffectiveStatus ? window.getEffectiveStatus(exibida) : (exibida.status||'Não iniciada');
+      const prog = Number(exibida.progresso||0);
       const tags = [];
       if(a.criticidade==='Alta' || a.criticidade==='Crítica') tags.push('<span class="avanco-item-tag crit">🚨 '+esc(a.criticidade)+'</span>');
       if(a.caminhoCritico==='Sim') tags.push('<span class="avanco-item-tag cp">🎯 Caminho crítico</span>');
@@ -8560,22 +8581,22 @@ body.admin-mode .admin-bar{border-color:#C7E6D3;background:#F5FAF7}
             +'<input type="number" class="avanco-item-input" min="0" max="100" value="'+prog+'" oninput="avOnInput(this,\''+esc(a.id)+'\')"><span style="font-weight:800;color:#40506A">%</span>'
             +'<select class="avanco-item-status" onchange="avOnStatus(this,\''+esc(a.id)+'\')">'
               +['Não iniciada','Em andamento','Concluída','Atrasada','Cancelada'].map(o=>
-                '<option '+(a.status===o?'selected':'')+'>'+o+'</option>'
+                '<option '+(exibida.status===o?'selected':'')+'>'+o+'</option>'
               ).join('')
             +'</select>'
           +'</div>'
           +'<div class="avanco-item-inicio-real">'
-            +'<label>In&iacute;cio real<input type="datetime-local" class="avanco-item-inicio-input" value="'+esc(a.inicioReal||'')+'" onchange="avOnInicioReal(this,\''+esc(a.id)+'\')"></label>'
+            +'<label>In&iacute;cio real<input type="datetime-local" class="avanco-item-inicio-input" value="'+esc(exibida.inicioReal||'')+'" onchange="avOnInicioReal(this,\''+esc(a.id)+'\')"></label>'
             +'<button type="button" onclick="avUsarInicioPlanejado(\''+esc(a.id)+'\')">Usar in&iacute;cio planejado</button>'
-            +'<label>T&eacute;rmino real<input type="datetime-local" class="avanco-item-termino-input" value="'+esc(a.terminoReal||'')+'" onchange="avOnTerminoReal(this,\''+esc(a.id)+'\')"></label>'
+            +'<label>T&eacute;rmino real<input type="datetime-local" class="avanco-item-termino-input" value="'+esc(exibida.terminoReal||'')+'" onchange="avOnTerminoReal(this,\''+esc(a.id)+'\')"></label>'
             +'<button type="button" onclick="avUsarTerminoPlanejado(\''+esc(a.id)+'\')">Usar t&eacute;rmino planejado</button>'
             +'<span class="small-muted">Opcional: sem preenchimento, o sistema usa automaticamente os hor&aacute;rios programados como base.</span>'
           +'</div>'
-          +'<textarea class="avanco-item-obs" placeholder="Observação / justificativa / ação (opcional)" onchange="avOnObs(this,\''+esc(a.id)+'\')">'+esc(a.obs||'')+'</textarea>'
+          +'<textarea class="avanco-item-obs" placeholder="Observação / justificativa / ação (opcional)" oninput="avOnObs(this,\''+esc(a.id)+'\')">'+esc(exibida.obs||'')+'</textarea>'
         +'</div>'
         +'<div class="avanco-item-actions">'
           +'<button class="btn-100" onclick="avConcluir(\''+esc(a.id)+'\')" title="Marca 100% e Concluída">✅ Concluir</button>'
-          +'<button class="btn-save" data-save="'+esc(a.id)+'" onclick="avSalvar(\''+esc(a.id)+'\')">💾 Salvar</button>'
+          +'<button class="btn-save '+(draft?'dirty':'')+'" data-save="'+esc(a.id)+'" onclick="avSalvar(\''+esc(a.id)+'\')">'+(draft?'💾 Salvar*':'💾 Salvar')+'</button>'
         +'</div>'
       +'</div>';
     }).join('');
@@ -8584,10 +8605,12 @@ body.admin-mode .admin-bar{border-color:#C7E6D3;background:#F5FAF7}
   // === Handlers de edição inline (não salvam automático — usuário confirma no botão) ===
   function findAct(id){ return (window.activities||[]).find(a=>String(a.id)===String(id)); }
   function markDirty(id){
+    avCapturarRascunho(id);
     const btn = document.querySelector('[data-save="'+CSS.escape(id)+'"]');
     if(btn){ btn.classList.add('dirty'); btn.textContent='💾 Salvar*'; }
   }
   function clearDirty(id){
+    avRascunhos.delete(String(id));
     const btn = document.querySelector('[data-save="'+CSS.escape(id)+'"]');
     if(btn){ btn.classList.remove('dirty'); btn.textContent='💾 Salvar'; }
   }
@@ -8684,6 +8707,7 @@ body.admin-mode .admin-bar{border-color:#C7E6D3;background:#F5FAF7}
       a.terminoReal = terminoReal;
       a.updatedAt = new Date().toISOString();
       clearDirty(id);
+      if(typeof window.kaReleasePendingRemote==='function') window.kaReleasePendingRemote();
       renderStats();
       if(btn){ btn.textContent='✔ Salvo online!'; setTimeout(()=>{ if(btn.textContent==='✔ Salvo online!') btn.textContent='💾 Salvar'; }, 1400); }
     }catch(error){
@@ -11259,7 +11283,7 @@ setInterval(function(){ try{ updateHeaderTimestamp(); }catch(e){} }, 30000);
   },30000);
 })();
 </script><datalist id="respBloqueioOptions"></datalist><datalist id="faseBloqueioOptions"></datalist><datalist id="seBloqueioOptions"></datalist>
-<script type="module" src="/shared-sync.js?v=20260805-1"></script>
+<script type="module" src="/shared-sync.js?v=20260806-1"></script>
 
 
 <script id="ka-firebase-shell">(function () {

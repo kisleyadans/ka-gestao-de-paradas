@@ -13,6 +13,8 @@ import {
   doc,
   initializeFirestore,
   onSnapshot,
+  persistentLocalCache,
+  persistentMultipleTabManager,
   runTransaction,
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
@@ -28,6 +30,7 @@ import {
   isAuthorizedDisciplineProgress,
   normalizeActivity,
   normalizeDiscipline,
+  progressGroupId,
   resolveActivityChange,
   same,
   sharedPart,
@@ -54,12 +57,14 @@ import {
   const db = initializeFirestore(app, {
     experimentalAutoDetectLongPolling: true,
     ignoreUndefinedProperties: true,
+    localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
   });
   // A base v2 começa vazia para a nova parada. As coleções antigas permanecem
   // intactas no Firestore como histórico e não são carregadas por esta versão.
   const stateRef = doc(db, "ka_free_state_v2", "current");
   const bucketsRef = collection(db, "ka_free_activity_buckets_v2");
-  const progressRef = collection(db, "ka_discipline_progress_v2");
+  const legacyProgressRef = collection(db, "ka_discipline_progress_v2");
+  const progressGroupsRef = collection(db, "ka_discipline_progress_groups_v3");
 
   let operator = false;
   let disciplineEditor = false;
@@ -81,6 +86,9 @@ import {
   let remoteBuckets = new Map();
   let remoteProgress = new Map();
   let progressRevision = 0;
+  let progressSchema = 0;
+  let progressUnsubscribe = null;
+  let migratingProgress = false;
   let initializing = false;
   let pendingRemote = false;
   let lastRemoteSignature = "";
@@ -305,6 +313,12 @@ import {
       pendingRemote = true;
       return;
     }
+    if (typeof window.kaAvancoHasPendingEdits === "function" && window.kaAvancoHasPendingEdits()) {
+      pendingRemote = true;
+      const count = typeof window.kaAvancoPendingCount === "function" ? window.kaAvancoPendingCount() : 1;
+      setStatus(`Atualização online aguardando você finalizar ${count} edição(ões)`, "pending");
+      return;
+    }
     if (assembled.signature !== lastRemoteSignature) {
       applyFullState(assembled.state, assembled.versions);
       lastRemoteSignature = assembled.signature;
@@ -331,6 +345,7 @@ import {
         transaction.set(stateRef, {
           baseState: sharedPart(initial),
           bucketCount: BUCKET_COUNT,
+          progressSchema: 3,
           revision: 1,
           updatedAt: serverTimestamp(),
           updatedBy: operatorName,
@@ -471,11 +486,30 @@ import {
     // O documento de progresso e secundario. A atividade ja foi removida do
     // bloco principal; se a limpeza deste historico falhar, isso nao pode
     // restaurar nem bloquear a exclusao confirmada pelo administrador.
-    const deletedIds = changes.filter((change) => change.deleted).map((change) => change.id);
-    if (deletedIds.length > 0) {
-      await Promise.allSettled(deletedIds.map((id) => (
-        deleteDoc(doc(progressRef, encodeURIComponent(String(id))))
-      )));
+    const deletedChanges = changes.filter((change) => change.deleted);
+    if (deletedChanges.length > 0) {
+      await Promise.allSettled(deletedChanges.map(async (change) => {
+        await deleteDoc(doc(legacyProgressRef, encodeURIComponent(String(change.id))));
+        if (progressSchema < 3) return;
+        const discipline = change.base?.disciplina || "";
+        const key = normalizeDiscipline(discipline);
+        const groupedDoc = doc(progressGroupsRef, progressGroupId(key, change.id));
+        await runTransaction(db, async (transaction) => {
+          const snapshot = await transaction.get(groupedDoc);
+          if (!snapshot.exists()) return;
+          const current = snapshot.data();
+          const entries = (Array.isArray(current.entries) ? current.entries : [])
+            .filter((entry) => String(entry?.activityId) !== String(change.id));
+          if (entries.length === 0) transaction.delete(groupedDoc);
+          else transaction.set(groupedDoc, {
+            ...current,
+            entries,
+            updatedAt: serverTimestamp(),
+            updatedBy: operatorName,
+            editorSessionId,
+          });
+        });
+      }));
     }
     return result;
   }
@@ -528,6 +562,8 @@ import {
         ? collectActivityChanges(window.activities, baselineActivities)
         : [];
       const currentShared = sharedPart(buildState());
+      const hadSharedChanges = !baselineSharedState || !same(baselineSharedState, currentShared);
+      const hadChanges = changes.length > 0 || hadSharedChanges;
       const activityResult = shouldSaveActivities
         ? await saveActivityChanges(changes)
         : { conflicts: [] };
@@ -542,10 +578,11 @@ import {
           window.showSaveToast("⚠ Outra pessoa alterou o mesmo item. A versão online mais recente foi preservada.");
         }
       } else {
+        baselineSharedState = clone(currentShared);
         setStatus(`Online · ${operatorName} · salvo às ${timeLabel()}`, "online");
         const saveInfo = document.getElementById("saveInfo");
         if (saveInfo) saveInfo.textContent = `Base online atualizada às ${timeLabel()}`;
-        if (typeof window.showSaveToast === "function") window.showSaveToast("✓ Alteração publicada para todos");
+        if (hadChanges && typeof window.showSaveToast === "function") window.showSaveToast("✓ Alteração publicada para todos");
       }
     } catch (error) {
       saveFailed = true;
@@ -619,25 +656,50 @@ import {
     if (actualStart && actualFinish && new Date(actualFinish).getTime() < new Date(actualStart).getTime()) {
       throw new Error("O t\u00e9rmino real n\u00e3o pode ser anterior ao in\u00edcio real");
     }
-    const progressDoc = doc(progressRef, encodeURIComponent(String(activity.id)));
+    const useGroupedProgress = progressSchema >= 3;
+    const progressDoc = useGroupedProgress
+      ? doc(progressGroupsRef, progressGroupId(expectedKey, activity.id))
+      : doc(legacyProgressRef, encodeURIComponent(String(activity.id)));
+    const progressValue = {
+      activityId: String(activity.id),
+      disciplineKey: expectedKey,
+      disciplineName: String(activity.disciplina || ""),
+      editorEmail: expectedEmail,
+      progresso: progress,
+      status,
+      obs: observation,
+      updatedBy: updater,
+      inicioReal: actualStart,
+      editorSessionId: editorSessionId || createEditorSessionId(),
+      terminoReal: actualFinish,
+      updatedAt: new Date().toISOString(),
+    };
     setStatus(`Salvando avanço de ${activity.disciplina}...`, "pending");
     try {
       await runTransaction(db, async (transaction) => {
-        transaction.set(progressDoc, {
-          activityId: String(activity.id),
-          disciplineKey: expectedKey,
-          disciplineName: String(activity.disciplina || ""),
-          editorEmail: expectedEmail,
-          progresso: progress,
-          status,
-          obs: observation,
-          updatedBy: updater,
-          inicioReal: actualStart,
-          editorSessionId: editorSessionId || createEditorSessionId(),
-          terminoReal: actualFinish,
-          updatedAt: serverTimestamp(),
-        });
+        if (useGroupedProgress) {
+          const snapshot = await transaction.get(progressDoc);
+          const current = snapshot.exists() ? snapshot.data() : {};
+          const entries = new Map((Array.isArray(current.entries) ? current.entries : [])
+            .filter((entry) => entry?.activityId)
+            .map((entry) => [String(entry.activityId), entry]));
+          entries.set(String(activity.id), progressValue);
+          transaction.set(progressDoc, {
+            disciplineKey: expectedKey,
+            disciplineName: String(activity.disciplina || ""),
+            editorEmail: expectedEmail,
+            entries: Array.from(entries.values()),
+            updatedBy: updater,
+            editorSessionId: progressValue.editorSessionId,
+            updatedAt: serverTimestamp(),
+          });
+        } else {
+          transaction.set(progressDoc, { ...progressValue, updatedAt: serverTimestamp() });
+        }
       });
+      remoteProgress.set(String(activity.id), progressValue);
+      progressRevision += 1;
+      lastRemoteSignature = "";
       activity.progresso = progress;
       activity.status = status;
       activity.obs = observation;
@@ -785,10 +847,106 @@ import {
     });
   }
 
+  function progressFromSnapshot(snapshot, schema) {
+    const next = new Map();
+    snapshot.forEach((item) => {
+      if (schema >= 3) {
+        const entries = Array.isArray(item.data()?.entries) ? item.data().entries : [];
+        entries.forEach((data) => {
+          if (data?.activityId) next.set(String(data.activityId), data);
+        });
+      } else {
+        const data = item.data();
+        if (data?.activityId) next.set(String(data.activityId), data);
+      }
+    });
+    return next;
+  }
+
+  async function migrateLegacyProgress(snapshot) {
+    if (!operator || migratingProgress || Number(remoteStateData?.progressSchema || 2) >= 3) return;
+    migratingProgress = true;
+    setStatus("Otimizando os avancos para reduzir leituras...", "pending");
+    try {
+      const grouped = new Map();
+      snapshot.forEach((item) => {
+        const value = item.data();
+        if (!value?.activityId || !value?.disciplineKey) return;
+        const id = progressGroupId(value.disciplineKey, value.activityId);
+        if (!grouped.has(id)) grouped.set(id, []);
+        grouped.get(id).push(value);
+      });
+      await runTransaction(db, async (transaction) => {
+        const stateSnapshot = await transaction.get(stateRef);
+        if (!stateSnapshot.exists()) throw new Error("A base online ainda nao foi criada");
+        const stateData = stateSnapshot.data();
+        if (Number(stateData.progressSchema || 2) >= 3) return;
+        const groupIds = Array.from(grouped.keys());
+        const groupSnapshots = await Promise.all(groupIds.map((id) => transaction.get(doc(progressGroupsRef, id))));
+        groupIds.forEach((id, index) => {
+          const current = groupSnapshots[index].exists() ? groupSnapshots[index].data() : {};
+          const entries = new Map((Array.isArray(current.entries) ? current.entries : [])
+            .filter((entry) => entry?.activityId)
+            .map((entry) => [String(entry.activityId), entry]));
+          grouped.get(id).forEach((entry) => entries.set(String(entry.activityId), entry));
+          const first = grouped.get(id)[0] || {};
+          transaction.set(doc(progressGroupsRef, id), {
+            disciplineKey: String(first.disciplineKey || current.disciplineKey || ""),
+            disciplineName: String(first.disciplineName || current.disciplineName || ""),
+            editorEmail: String(first.editorEmail || current.editorEmail || ""),
+            entries: Array.from(entries.values()),
+            updatedAt: serverTimestamp(),
+            updatedBy: operatorName || "Migracao automatica",
+            editorSessionId,
+          });
+        });
+        transaction.set(stateRef, {
+          ...stateData,
+          progressSchema: 3,
+          revision: Number(stateData.revision || 0) + 1,
+          updatedAt: serverTimestamp(),
+          updatedBy: operatorName || "Migracao automatica",
+          editorSessionId,
+        });
+      });
+      setStatus("Avancos otimizados - alternando para o modo economico", "online");
+    } catch (error) {
+      console.error("Progress migration failed", error);
+      setStatus("Modo economico aguardando nova tentativa - dados atuais preservados", "error");
+      setTimeout(() => {
+        if (operator && Number(remoteStateData?.progressSchema || 2) < 3) migrateLegacyProgress(snapshot);
+      }, 30000);
+    } finally {
+      migratingProgress = false;
+    }
+  }
+
+  function startProgressSync(requestedSchema) {
+    const schema = Number(requestedSchema || 2) >= 3 ? 3 : 2;
+    if (progressUnsubscribe && progressSchema === schema) return;
+    if (progressUnsubscribe) progressUnsubscribe();
+    progressSchema = schema;
+    progressLoaded = false;
+    const reference = schema >= 3 ? progressGroupsRef : legacyProgressRef;
+    progressUnsubscribe = onSnapshot(reference, (snapshot) => {
+      remoteProgress = progressFromSnapshot(snapshot, schema);
+      progressRevision += 1;
+      progressLoaded = true;
+      lastRemoteSignature = "";
+      applyAvailableRemote();
+      if (schema < 3 && operator) migrateLegacyProgress(snapshot);
+    }, (error) => {
+      console.error("Progress listener failed", error);
+      progressLoaded = true;
+      setStatus("Sem conexao com os avancos online - confira as regras", "error");
+    });
+  }
+
   function startRealtimeSync() {
     onSnapshot(stateRef, (snapshot) => {
       remoteStateData = snapshot.exists() ? snapshot.data() : null;
       stateLoaded = true;
+      if (remoteStateData) startProgressSync(remoteStateData.progressSchema);
       applyAvailableRemote();
     }, (error) => {
       console.error("State listener failed", error);
@@ -808,23 +966,6 @@ import {
       setStatus("Sem conexão com as atividades online", "error");
     });
 
-    onSnapshot(progressRef, (snapshot) => {
-      const next = new Map();
-      snapshot.forEach((item) => {
-        const data = item.data();
-        if (data?.activityId) next.set(String(data.activityId), data);
-      });
-      remoteProgress = next;
-      progressRevision += 1;
-      progressLoaded = true;
-      lastRemoteSignature = "";
-      applyAvailableRemote();
-    }, (error) => {
-      console.error("Progress listener failed", error);
-      progressLoaded = true;
-      setStatus("Sem conexão com os avanços online · confira as regras", "error");
-    });
-
     renderEditorPresence();
   }
 
@@ -838,6 +979,7 @@ import {
     window.kaLoginDiscipline = loginDiscipline;
     window.kaLogoutDiscipline = logout;
     window.kaSaveDisciplineProgress = saveDisciplineProgress;
+    window.kaReleasePendingRemote = applyAvailableRemote;
     window.kaDisciplineEmail = disciplineEmail;
     try { await setPersistence(auth, browserLocalPersistence); } catch {}
     const user = await waitForAuth();

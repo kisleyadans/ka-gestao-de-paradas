@@ -1,4 +1,5 @@
 export const BUCKET_COUNT = 16;
+export const PROGRESS_GROUP_BUCKETS = 8;
 
 export const SHARED_KEYS = [
   "schema",
@@ -77,6 +78,18 @@ export function bucketId(id) {
     hash = Math.imul(hash, 16777619);
   }
   return String((hash >>> 0) % BUCKET_COUNT).padStart(2, "0");
+}
+
+export function progressGroupId(disciplineKey, activityId) {
+  const key = normalizeDiscipline(disciplineKey).replace(/[^A-Z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "SEM-DISCIPLINA";
+  const text = String(activityId || "");
+  let hash = 2166136261;
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  const bucket = String((hash >>> 0) % PROGRESS_GROUP_BUCKETS).padStart(2, "0");
+  return `${key}--${bucket}`;
 }
 
 export function buildBuckets(items) {
