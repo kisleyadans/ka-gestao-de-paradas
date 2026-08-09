@@ -14,7 +14,7 @@ Não utiliza Cloud Functions nem Secret Manager e não exige ativação do plano
 ## Acesso
 
 - qualquer pessoa com o link pode visualizar;
-- o botão **Administrador** solicita o nome e a senha geral `PCM2026`;
+- o botão **Administrador** solicita o nome e uma senha geral mantida somente no Firebase Authentication;
 - a conta técnica de edição é `operador@ka-paradas.app`;
 - as regras do Firestore permitem escrita somente para essa conta autenticada;
 - vários computadores podem entrar ao mesmo tempo e editar atividades diferentes;
@@ -24,7 +24,7 @@ A nova parada usa as coleções `ka_free_state_v2` e
 `ka_free_activity_buckets_v2`, inicialmente vazias. Os dados das coleções
 anteriores são preservados, mas não aparecem nesta versão do aplicativo.
 
-Antes do uso em produção, troque a senha inicial no Firebase Authentication.
+Use uma senha exclusiva e forte no Firebase Authentication e nunca a publique no repositório.
 
 ## Senhas por disciplina na aba Avanço
 

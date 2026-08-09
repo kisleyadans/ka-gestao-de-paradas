@@ -32,11 +32,11 @@ A versão Firebase é gerada em `firebase/public`. O guia de configuração est�
 
 ## Controle de acesso
 
-Quem possui o link pode consultar o plano. Alterações exigem a conta compartilhada
-`operador@ka-paradas.app`, com senha inicial de teste `PCM2026`. Vários computadores
-podem usar essa conta ao mesmo tempo; cada pessoa informa o próprio nome para o
-histórico. O Firestore mescla alterações feitas em atividades diferentes e rejeita
-conflitos no mesmo campo. A senha deve ser trocada antes de uso em produção.
+Quem possui o link pode consultar o plano. Alterações administrativas exigem a conta
+de edição configurada no Firebase Authentication. A senha não fica armazenada no
+código nem na documentação pública. Vários computadores podem usar essa conta ao
+mesmo tempo; cada pessoa informa o próprio nome para o histórico. O Firestore mescla
+alterações feitas em atividades diferentes e rejeita conflitos no mesmo campo.
 
 Na aba **Avanço**, cada disciplina usa uma conta própria do Firebase Authentication.
 O e-mail é gerado pelo nome normalizado da disciplina: `Elétrica` usa
