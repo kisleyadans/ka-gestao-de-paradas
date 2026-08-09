@@ -6,6 +6,7 @@ const root = process.cwd();
 const sourcePath = path.join(root, "public", "para360-operacional.html");
 const syncPath = path.join(root, "public", "shared-sync.js");
 const syncCorePath = path.join(root, "public", "firebase-sync-core.mjs");
+const syncPolicyPath = path.join(root, "public", "firebase-economic-policy.mjs");
 const pagePath = path.join(root, "app", "page.tsx");
 const shellPath = path.join(root, "work", "offline-shell.js");
 const outputDir = path.join(root, "firebase", "public");
@@ -76,6 +77,7 @@ await Promise.all([
   writeFile(outputPath, html, "utf8"),
   copyFile(syncPath, path.join(outputDir, "shared-sync.js")),
   copyFile(syncCorePath, path.join(outputDir, "firebase-sync-core.mjs")),
+  copyFile(syncPolicyPath, path.join(outputDir, "firebase-economic-policy.mjs")),
 ]);
 
 const sharedSyncTags = [...html.matchAll(sharedSyncTagPattern)];
