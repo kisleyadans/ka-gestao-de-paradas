@@ -41,13 +41,13 @@ import {
   resolveActivityChange,
   same,
   sharedPart,
-} from "./firebase-sync-core.mjs?v=20260809-secure-login-1";
+} from "./firebase-sync-core.mjs?v=20260809-secure-login-2";
 import {
   ECONOMIC_FULL_REFRESH_MS,
   ECONOMIC_REFRESH_MS,
   billedQueryReads,
   shouldRunFullRefresh,
-} from "./firebase-economic-policy.mjs?v=20260809-secure-login-1";
+} from "./firebase-economic-policy.mjs?v=20260809-secure-login-2";
 
 (function () {
   "use strict";
@@ -1237,6 +1237,13 @@ import {
     ensureStatusUi();
     window.pcmLogin = login;
     window.pcmLogout = logout;
+    const adminButton = document.getElementById("pcmAdminBtn");
+    if (adminButton) {
+      adminButton.dataset.onlineReady = "1";
+      adminButton.disabled = false;
+      adminButton.removeAttribute("aria-busy");
+      adminButton.title = "Entrar com a conta segura de edição";
+    }
     window.kaClearSharedActivities = clearSharedActivities;
     window.kaSaveSharedNow = flushSharedChanges;
     window.kaScheduleSharedSave = scheduleSave;
