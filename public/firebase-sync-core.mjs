@@ -1,6 +1,16 @@
 export const BUCKET_COUNT = 16;
 export const PROGRESS_GROUP_BUCKETS = 8;
 
+export const ACTIVITY_PROGRESS_FIELDS = [
+  "progresso",
+  "status",
+  "obs",
+  "inicioReal",
+  "terminoReal",
+  "updatedBy",
+  "updatedAt",
+];
+
 export const SHARED_KEYS = [
   "schema",
   "meetingPlan",
@@ -130,6 +140,80 @@ export function collectActivityChanges(currentItems, baselineEntries) {
   return changes;
 }
 
+function activityWithoutProgress(value) {
+  const activity = normalizeActivity(value);
+  ACTIVITY_PROGRESS_FIELDS.forEach((field) => delete activity[field]);
+  return activity;
+}
+
+function hasMeaningfulInitialProgress(value) {
+  const activity = normalizeActivity(value);
+  const status = normalizeDiscipline(activity.status);
+  return Number(activity.progresso || 0) > 0
+    || Boolean(status && status !== "NAO INICIADA")
+    || Boolean(String(activity.obs || "").trim())
+    || Boolean(String(activity.inicioReal || "").trim())
+    || Boolean(String(activity.terminoReal || "").trim());
+}
+
+// O andamento pertence aos documentos de progresso por disciplina. O bloco
+// principal recebe somente o cadastro/planejamento da atividade. Assim uma
+// atualizacao de avanco nao reaparece como uma segunda edicao estrutural e nao
+// gera conflito falso depois de recarregar ou iniciar uma nova sessao.
+export function splitActivityChanges(changes) {
+  const structural = [];
+  const progress = [];
+  (Array.isArray(changes) ? changes : []).forEach((change) => {
+    if (!change?.id) return;
+    if (change.deleted) {
+      structural.push({
+        ...clone(change),
+        base: change.base ? activityWithoutProgress(change.base) : null,
+      });
+      return;
+    }
+
+    const base = change.base ? normalizeActivity(change.base) : null;
+    const next = normalizeActivity(change.next);
+    const changedProgressFields = ACTIVITY_PROGRESS_FIELDS
+      .filter((field) => !same(base?.[field], next[field]));
+    if (changedProgressFields.length > 0 && (base || hasMeaningfulInitialProgress(next))) {
+      progress.push({
+        id: change.id,
+        patch: {
+          progresso: Math.max(0, Math.min(100, Number(next.progresso || 0))),
+          status: String(next.status || "Não iniciada"),
+          obs: String(next.obs || ""),
+          inicioReal: String(next.inicioReal || ""),
+          terminoReal: String(next.terminoReal || ""),
+          updatedBy: String(next.updatedBy || ""),
+        },
+        fields: changedProgressFields,
+      });
+    }
+
+    const structuralBase = base ? activityWithoutProgress(base) : null;
+    const structuralNext = activityWithoutProgress(next);
+    // Uma atividade nova conserva apenas os valores neutros como contingencia
+    // para a primeira abertura, antes de existir um documento de progresso.
+    if (!base) {
+      structuralNext.progresso = 0;
+      structuralNext.status = "Não iniciada";
+      structuralNext.obs = "";
+      structuralNext.inicioReal = "";
+      structuralNext.terminoReal = "";
+    }
+    if (!base || !same(structuralBase, structuralNext)) {
+      structural.push({
+        ...clone(change),
+        base: structuralBase,
+        next: structuralNext,
+      });
+    }
+  });
+  return { structural, progress };
+}
+
 // O retorno em tempo real pode chegar alguns instantes depois da transacao.
 // Registre localmente criacoes e exclusoes ja confirmadas para que uma acao
 // imediata sobre o mesmo item nao desapareca nesse intervalo.
@@ -236,12 +320,16 @@ export function applyExclusiveActivityChange(currentEntry, change) {
   }
   const next = change.next ? normalizeActivity(change.next) : null;
   if (!next?.id) return { accepted: false, error: "Atividade sem identificador" };
+  const current = currentEntry?.activity ? normalizeActivity(currentEntry.activity) : null;
+  const base = change.base ? normalizeActivity(change.base) : null;
+  const fields = changedFields(base || { id: next.id }, next);
+  const merged = current ? applyFields(current, next, fields) : next;
   return {
     accepted: true,
     deleted: false,
     entry: {
       id: next.id,
-      activity: next,
+      activity: normalizeActivity(merged),
       position: Number(change.position ?? currentEntry?.position ?? 0),
       revision: currentRevision + 1,
     },

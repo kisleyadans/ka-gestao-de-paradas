@@ -41,7 +41,8 @@ import {
   resolveActivityChange,
   same,
   sharedPart,
-} from "./firebase-sync-core.mjs?v=20260809-secure-login-3";
+  splitActivityChanges,
+} from "./firebase-sync-core.mjs?v=20260809-progress-split-1";
 import {
   ECONOMIC_FULL_REFRESH_MS,
   ECONOMIC_REFRESH_MS,
@@ -712,14 +713,37 @@ import {
       const changes = shouldSaveActivities
         ? collectActivityChanges(window.activities, baselineActivities)
         : [];
+      const separatedChanges = splitActivityChanges(changes);
       const currentShared = sharedPart(buildState());
       const hadSharedChanges = !baselineSharedState || !same(baselineSharedState, currentShared);
-      const hadChanges = changes.length > 0 || hadSharedChanges;
+      const hadChanges = separatedChanges.structural.length > 0
+        || separatedChanges.progress.length > 0
+        || hadSharedChanges;
       const activityResult = shouldSaveActivities
-        ? await saveActivityChanges(changes)
+        ? await saveActivityChanges(separatedChanges.structural)
         : { conflicts: [] };
       if (shouldSaveActivities && activityResult.conflicts.length === 0) {
-        baselineActivities = confirmActivityChanges(baselineActivities, changes);
+        baselineActivities = confirmActivityChanges(baselineActivities, separatedChanges.structural);
+        for (const progressChange of separatedChanges.progress) {
+          await saveDisciplineProgress(progressChange.id, progressChange.patch);
+        }
+        // Confirme a imagem completa exibida no navegador. Isso impede que o
+        // mesmo avanco, ja salvo na colecao da disciplina, volte a ser tratado
+        // como uma alteracao estrutural pendente na proxima gravacao.
+        changes.forEach((change) => {
+          if (change.deleted) {
+            baselineActivities.delete(String(change.id));
+            return;
+          }
+          const activity = (Array.isArray(window.activities) ? window.activities : [])
+            .find((item) => String(item.id) === String(change.id));
+          if (!activity) return;
+          const previous = baselineActivities.get(String(change.id));
+          baselineActivities.set(String(change.id), {
+            activity: clone(activity),
+            revision: Number(previous?.revision || 1),
+          });
+        });
       }
       const sharedResult = await saveSharedChanges(currentShared);
       const conflicts = [...activityResult.conflicts, ...sharedResult.conflicts];
