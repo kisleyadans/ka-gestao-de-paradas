@@ -1,0 +1,31 @@
+name: Teste Firebase - 25 usuarios e disciplinas
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  load-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: firebase/functions/package-lock.json
+      - name: Instalar dependencias isoladas
+        working-directory: firebase/functions
+        run: npm ci --ignore-scripts
+      - name: Preparar credencial Firebase
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: node -e "require('fs').writeFileSync(process.env.RUNNER_TEMP + '/firebase-service-account.json', process.env.FIREBASE_SERVICE_ACCOUNT_JSON)"
+      - name: Simular 25 usuarios e 17 disciplinas
+        env:
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
+        run: node firebase/functions/load-test.mjs
