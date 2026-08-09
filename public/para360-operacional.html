@@ -127,7 +127,7 @@ body.ka-app-layout .tabs{bottom:14px !important}
     <button class="tab" onclick="showTab('avanco', this)"><span class="ka-nav-icon" aria-hidden="true">📈</span><span class="ka-nav-label">Avanço</span></button>
     <button class="tab" onclick="showTab('contatos', this)"><span class="ka-nav-icon" aria-hidden="true">☏</span><span class="ka-nav-label">Contatos</span></button>
     <button class="tab" onclick="showTab('report', this)"><span class="ka-nav-icon" aria-hidden="true">▤</span><span class="ka-nav-label">Relatório da Parada</span></button>
-  </div><div id="pcmAdminBar" class="admin-bar" title="Este bloqueio evita alterações acidentais. A segurança de acesso deve ser controlada pelas permissões do SharePoint/servidor."><span class="admin-state" id="pcmAdminState">🔓 Modo administrador ativo</span><span id="kaSharedStatus" class="ka-shared-status pending">Conectando ao Firebase...</span><button class="btn-login" id="pcmAdminBtn" onclick="pcmLogin()">🔓 Admin ativo</button><button class="btn-login admin-hide" id="pcmDashboardPdfBtn" onclick="generateDashboardPdf()" title="Preparar o Dashboard completo para salvar como PDF">📄 PDF Dashboard</button><button class="btn-logout" id="pcmLogoutBtn" onclick="pcmLogout()" style="display: inline-block;">🚪 Sair Admin</button></div>
+  </div><div id="pcmAdminBar" class="admin-bar"><span class="admin-state" id="pcmAdminState" style="display:none"></span><span id="kaSharedStatus" class="ka-shared-status pending">Conectando ao Firebase...</span><button class="btn-login" id="pcmAdminBtn" onclick="pcmLogin()">🔓 Admin ativo</button><button class="btn-login admin-hide" id="pcmDashboardPdfBtn" onclick="generateDashboardPdf()" title="Preparar o Dashboard completo para salvar como PDF">📄 PDF Dashboard</button><button class="btn-logout" id="pcmLogoutBtn" onclick="pcmLogout()" style="display: inline-block;">🚪 Sair Admin</button></div>
 
   <div class="card" id="filtersCard">
     <div class="section-title">
@@ -4507,8 +4507,8 @@ setTimeout(()=>{
     const btB = document.getElementById('pcmBloqAdminBtn');
     const btBout = document.getElementById('pcmBloqLogoutBtn');
     if(st){
-      if(admin) st.textContent = '🔓 Modo administrador ativo';
-      else st.textContent = '🔒 Modo consulta local — permissões reais controladas no SharePoint/servidor';
+      st.textContent = admin ? '🔓 Modo administrador ativo' : '';
+      st.style.display = admin ? '' : 'none';
     }
     if(bt) bt.textContent = admin ? '🔓 Admin ativo' : '🔐 Administrador';
     const logoutBtn = document.getElementById('pcmLogoutBtn');
@@ -8225,5 +8225,5 @@ setInterval(function(){ try{ updateHeaderTimestamp(); }catch(e){} }, 30000);
 })();
 </script>
 
-<script type="module" src="/shared-sync.js?v=20260808-economic-1"></script>
+<script type="module" src="/shared-sync.js?v=20260808-economic-2"></script>
 </body></html>
