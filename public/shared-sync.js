@@ -41,13 +41,13 @@ import {
   resolveActivityChange,
   same,
   sharedPart,
-} from "./firebase-sync-core.mjs?v=20260809-secure-login-2";
+} from "./firebase-sync-core.mjs?v=20260809-secure-login-3";
 import {
   ECONOMIC_FULL_REFRESH_MS,
   ECONOMIC_REFRESH_MS,
   billedQueryReads,
   shouldRunFullRefresh,
-} from "./firebase-economic-policy.mjs?v=20260809-secure-login-2";
+} from "./firebase-economic-policy.mjs?v=20260809-secure-login-3";
 
 (function () {
   "use strict";
@@ -177,6 +177,34 @@ import {
       `;
       document.head.appendChild(style);
     }
+
+    if (!document.getElementById("kaAdminLoginStyle")) {
+      const loginStyle = document.createElement("style");
+      loginStyle.id = "kaAdminLoginStyle";
+      loginStyle.textContent = `
+        .ka-admin-login-overlay {align-items:center!important;background:rgba(7,25,18,.68)!important;display:flex!important;
+          inset:0!important;justify-content:center!important;margin:0!important;padding:18px!important;position:fixed!important;
+          width:auto!important;height:auto!important;z-index:2147483647!important}
+        .ka-admin-login-dialog {background:#fff!important;border:1px solid #d9e6df!important;border-radius:18px!important;
+          box-shadow:0 24px 70px rgba(0,0,0,.28)!important;color:#183b2c!important;display:block!important;
+          margin:0!important;max-width:420px!important;padding:24px!important;position:relative!important;width:100%!important}
+        .ka-admin-login-dialog h2 {font-size:20px!important;margin:0 0 6px!important}
+        .ka-admin-login-dialog p {color:#52675d!important;font-size:13px!important;line-height:1.45!important;margin:0 0 18px!important}
+        .ka-admin-login-dialog label {display:block!important;font-size:12px!important;font-weight:850!important;margin:12px 0 5px!important}
+        .ka-admin-login-dialog input {background:#fff!important;border:1px solid #baccc2!important;border-radius:10px!important;
+          box-sizing:border-box!important;color:#173a2a!important;display:block!important;font-size:16px!important;
+          padding:11px 12px!important;position:static!important;width:100%!important}
+        .ka-admin-login-dialog input:focus {border-color:#00834b!important;box-shadow:0 0 0 3px rgba(0,131,75,.13)!important;outline:0!important}
+        .ka-admin-login-error {color:#ad2e24!important;font-weight:750!important;margin:9px 0 0!important;min-height:18px!important}
+        .ka-admin-login-actions {display:flex!important;gap:10px!important;justify-content:flex-end!important;margin-top:16px!important}
+        .ka-admin-login-actions button {border:0!important;border-radius:10px!important;cursor:pointer!important;font-weight:850!important;padding:10px 16px!important}
+        .ka-admin-login-cancel {background:#edf2ef!important;color:#345246!important}
+        .ka-admin-login-submit {background:#007c47!important;color:#fff!important}
+        @media(max-width:520px){.ka-admin-login-overlay{align-items:flex-start!important;padding-top:12vh!important}.ka-admin-login-dialog{max-width:calc(100vw - 28px)!important;padding:20px!important}}
+        @media print{.ka-admin-login-overlay{display:none!important}}
+      `;
+      document.head.appendChild(loginStyle);
+    }
   }
 
   function requestOperatorCredentials(initialName = "") {
@@ -190,7 +218,7 @@ import {
         <div class="ka-admin-login-dialog" role="dialog" aria-modal="true" aria-labelledby="kaAdminLoginTitle">
           <form id="kaAdminLoginForm" autocomplete="off">
             <h2 id="kaAdminLoginTitle">Acesso administrativo</h2>
-            <p>Informe seu nome para o histórico e a senha de administrador. A senha nunca é preenchida pelo aplicativo.</p>
+            <p>Informe seu nome para o histórico e a senha de administrador.</p>
             <label for="kaAdminOperatorName">Seu nome</label>
             <input id="kaAdminOperatorName" type="text" maxlength="60" autocomplete="off" required>
             <label for="kaAdminOperatorPassword">Senha</label>
@@ -209,12 +237,15 @@ import {
       const passwordInput = overlay.querySelector("#kaAdminOperatorPassword");
       const errorMessage = overlay.querySelector("#kaAdminLoginError");
       const cancelButton = overlay.querySelector(".ka-admin-login-cancel");
+      const previousOverflow = document.documentElement.style.overflow;
+      document.documentElement.style.overflow = "hidden";
       nameInput.value = String(initialName || "").slice(0, 60);
       passwordInput.name = `ka-admin-secret-${Date.now()}`;
       passwordInput.value = "";
 
       const finish = (credentials) => {
         document.removeEventListener("keydown", onKeyDown);
+        document.documentElement.style.overflow = previousOverflow;
         overlay.remove();
         resolve(credentials);
       };
