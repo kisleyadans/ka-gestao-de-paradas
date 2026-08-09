@@ -11,12 +11,18 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDocFromCache,
+  getDocFromServer,
+  getDocsFromCache,
+  getDocsFromServer,
   initializeFirestore,
-  onSnapshot,
   persistentLocalCache,
   persistentMultipleTabManager,
+  query,
   runTransaction,
   serverTimestamp,
+  Timestamp,
+  where,
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 import {
   BUCKET_COUNT,
@@ -30,11 +36,18 @@ import {
   isAuthorizedDisciplineProgress,
   normalizeActivity,
   normalizeDiscipline,
+  progressDisciplineId,
   progressGroupId,
   resolveActivityChange,
   same,
   sharedPart,
 } from "./firebase-sync-core.mjs";
+import {
+  ECONOMIC_FULL_REFRESH_MS,
+  ECONOMIC_REFRESH_MS,
+  billedQueryReads,
+  shouldRunFullRefresh,
+} from "./firebase-economic-policy.mjs";
 
 (function () {
   "use strict";
@@ -65,6 +78,8 @@ import {
   const bucketsRef = collection(db, "ka_free_activity_buckets_v2");
   const legacyProgressRef = collection(db, "ka_discipline_progress_v2");
   const progressGroupsRef = collection(db, "ka_discipline_progress_groups_v3");
+  const disciplineProgressRef = collection(db, "ka_discipline_progress_v4");
+  const ECONOMIC_CACHE_KEY = "ka_economic_sync_v4";
 
   let operator = false;
   let disciplineEditor = false;
@@ -87,11 +102,16 @@ import {
   let remoteProgress = new Map();
   let progressRevision = 0;
   let progressSchema = 0;
-  let progressUnsubscribe = null;
   let migratingProgress = false;
   let initializing = false;
   let pendingRemote = false;
   let lastRemoteSignature = "";
+  let refreshTimer = null;
+  let refreshing = false;
+  let lastBucketTimestamp = null;
+  let lastProgressTimestamp = null;
+  let progressDocumentOwners = new Map();
+  let readBudget = { serverReads: 0, queries: 0, cacheLoads: 0, lastRefreshAt: 0 };
 
   function ensureStatusUi() {
     const bar = document.getElementById("pcmAdminBar");
@@ -104,6 +124,18 @@ import {
       bar.insertBefore(statusChip, firstButton);
     } else {
       statusChip = document.getElementById("kaSharedStatus");
+    }
+
+    if (bar && !document.getElementById("kaSharedRefresh")) {
+      const refreshButton = document.createElement("button");
+      refreshButton.id = "kaSharedRefresh";
+      refreshButton.type = "button";
+      refreshButton.className = "ka-shared-refresh";
+      refreshButton.textContent = "Atualizar dados";
+      refreshButton.title = "Buscar agora as alteracoes feitas em outros aparelhos";
+      refreshButton.addEventListener("click", () => window.kaRefreshOnlineNow?.());
+      const firstButton = bar.querySelector("button");
+      bar.insertBefore(refreshButton, firstButton);
     }
 
     if (!document.getElementById("kaSharedSyncStyle")) {
@@ -119,11 +151,14 @@ import {
         .ka-shared-status.online {background:#e8f5ee;color:#007642;border-color:#c7e6d3}
         .ka-shared-status.pending {background:#fff6d6;color:#866500;border-color:#efdfb4}
         .ka-shared-status.error {background:#fbeeed;color:#a83426;border-color:#f1d3ce}
+        .ka-shared-refresh {background:#fff;border:1px solid #cbd9d2;border-radius:999px;color:#176044;
+          cursor:pointer;font-size:10px;font-weight:850;padding:6px 10px}
+        .ka-shared-refresh:hover {background:#eef8f3}
         body:not(.admin-mode) input:not([type="search"]):not(#fEquipamento):not(#fBloqSearch),
         body:not(.admin-mode) textarea,
         body:not(.admin-mode) select:not(#fDisciplina):not(#fArea):not(#fStatus) {pointer-events:none}
         @media(max-width:720px){.admin-bar .admin-state{flex-basis:100%}.ka-shared-status{margin-right:auto}}
-        @media print{.ka-shared-status{display:none!important}}
+        @media print{.ka-shared-status,.ka-shared-refresh{display:none!important}}
       `;
       document.head.appendChild(style);
     }
@@ -345,7 +380,7 @@ import {
         transaction.set(stateRef, {
           baseState: sharedPart(initial),
           bucketCount: BUCKET_COUNT,
-          progressSchema: 3,
+          progressSchema: 4,
           revision: 1,
           updatedAt: serverTimestamp(),
           updatedBy: operatorName,
@@ -362,6 +397,7 @@ import {
           });
         }
       });
+      setTimeout(() => refreshFromServer({ forceFull: true }), 500);
     } catch (error) {
       console.error("Initial Firebase load failed", error);
       setStatus("Não foi possível criar a base online", "error");
@@ -493,7 +529,9 @@ import {
         if (progressSchema < 3) return;
         const discipline = change.base?.disciplina || "";
         const key = normalizeDiscipline(discipline);
-        const groupedDoc = doc(progressGroupsRef, progressGroupId(key, change.id));
+        const groupedDoc = progressSchema >= 4
+          ? doc(disciplineProgressRef, progressDisciplineId(key))
+          : doc(progressGroupsRef, progressGroupId(key, change.id));
         await runTransaction(db, async (transaction) => {
           const snapshot = await transaction.get(groupedDoc);
           if (!snapshot.exists()) return;
@@ -657,9 +695,11 @@ import {
       throw new Error("O t\u00e9rmino real n\u00e3o pode ser anterior ao in\u00edcio real");
     }
     const useGroupedProgress = progressSchema >= 3;
-    const progressDoc = useGroupedProgress
-      ? doc(progressGroupsRef, progressGroupId(expectedKey, activity.id))
-      : doc(legacyProgressRef, encodeURIComponent(String(activity.id)));
+    const progressDoc = progressSchema >= 4
+      ? doc(disciplineProgressRef, progressDisciplineId(expectedKey))
+      : useGroupedProgress
+        ? doc(progressGroupsRef, progressGroupId(expectedKey, activity.id))
+        : doc(legacyProgressRef, encodeURIComponent(String(activity.id)));
     const progressValue = {
       activityId: String(activity.id),
       disciplineKey: expectedKey,
@@ -847,32 +887,78 @@ import {
     });
   }
 
-  function progressFromSnapshot(snapshot, schema) {
-    const next = new Map();
-    snapshot.forEach((item) => {
-      if (schema >= 3) {
-        const entries = Array.isArray(item.data()?.entries) ? item.data().entries : [];
-        entries.forEach((data) => {
-          if (data?.activityId) next.set(String(data.activityId), data);
-        });
-      } else {
-        const data = item.data();
-        if (data?.activityId) next.set(String(data.activityId), data);
-      }
-    });
-    return next;
+  function timestampAfter(left, right) {
+    if (!left) return false;
+    if (!right) return true;
+    if (Number(left.seconds || 0) !== Number(right.seconds || 0)) {
+      return Number(left.seconds || 0) > Number(right.seconds || 0);
+    }
+    return Number(left.nanoseconds || 0) > Number(right.nanoseconds || 0);
   }
 
-  async function migrateLegacyProgress(snapshot) {
-    if (!operator || migratingProgress || Number(remoteStateData?.progressSchema || 2) >= 3) return;
+  function newestTimestamp(current, value) {
+    return timestampAfter(value, current) ? value : current;
+  }
+
+  function progressReference(schema) {
+    if (schema >= 4) return disciplineProgressRef;
+    if (schema >= 3) return progressGroupsRef;
+    return legacyProgressRef;
+  }
+
+  function mergeProgressSnapshot(snapshot, schema, replace) {
+    if (replace) {
+      remoteProgress = new Map();
+      progressDocumentOwners = new Map();
+    }
+    snapshot.forEach((item) => {
+      const owner = `${schema}:${item.id}`;
+      Array.from(progressDocumentOwners.entries()).forEach(([activityId, documentOwner]) => {
+        if (documentOwner === owner) {
+          progressDocumentOwners.delete(activityId);
+          remoteProgress.delete(activityId);
+        }
+      });
+      const values = schema >= 3
+        ? (Array.isArray(item.data()?.entries) ? item.data().entries : [])
+        : [item.data()];
+      values.forEach((data) => {
+        if (!data?.activityId) return;
+        const activityId = String(data.activityId);
+        remoteProgress.set(activityId, data);
+        progressDocumentOwners.set(activityId, owner);
+      });
+      lastProgressTimestamp = newestTimestamp(lastProgressTimestamp, item.data()?.updatedAt);
+    });
+    progressRevision += 1;
+  }
+
+  function mergeBucketSnapshot(snapshot, replace) {
+    if (replace) remoteBuckets = new Map();
+    snapshot.forEach((item) => {
+      remoteBuckets.set(item.id, item.data());
+      lastBucketTimestamp = newestTimestamp(lastBucketTimestamp, item.data()?.updatedAt);
+    });
+  }
+
+  function progressValues(snapshot, schema) {
+    const values = [];
+    snapshot.forEach((item) => {
+      if (schema >= 3) values.push(...(Array.isArray(item.data()?.entries) ? item.data().entries : []));
+      else values.push(item.data());
+    });
+    return values.filter((value) => value?.activityId && value?.disciplineKey);
+  }
+
+  async function migrateProgressToV4(snapshot, sourceSchema) {
+    if (!operator || migratingProgress || Number(remoteStateData?.progressSchema || 2) >= 4) return;
     migratingProgress = true;
     setStatus("Otimizando os avancos para reduzir leituras...", "pending");
     try {
       const grouped = new Map();
-      snapshot.forEach((item) => {
-        const value = item.data();
+      progressValues(snapshot, sourceSchema).forEach((value) => {
         if (!value?.activityId || !value?.disciplineKey) return;
-        const id = progressGroupId(value.disciplineKey, value.activityId);
+        const id = progressDisciplineId(value.disciplineKey);
         if (!grouped.has(id)) grouped.set(id, []);
         grouped.get(id).push(value);
       });
@@ -880,9 +966,9 @@ import {
         const stateSnapshot = await transaction.get(stateRef);
         if (!stateSnapshot.exists()) throw new Error("A base online ainda nao foi criada");
         const stateData = stateSnapshot.data();
-        if (Number(stateData.progressSchema || 2) >= 3) return;
+        if (Number(stateData.progressSchema || 2) >= 4) return;
         const groupIds = Array.from(grouped.keys());
-        const groupSnapshots = await Promise.all(groupIds.map((id) => transaction.get(doc(progressGroupsRef, id))));
+        const groupSnapshots = await Promise.all(groupIds.map((id) => transaction.get(doc(disciplineProgressRef, id))));
         groupIds.forEach((id, index) => {
           const current = groupSnapshots[index].exists() ? groupSnapshots[index].data() : {};
           const entries = new Map((Array.isArray(current.entries) ? current.entries : [])
@@ -890,7 +976,7 @@ import {
             .map((entry) => [String(entry.activityId), entry]));
           grouped.get(id).forEach((entry) => entries.set(String(entry.activityId), entry));
           const first = grouped.get(id)[0] || {};
-          transaction.set(doc(progressGroupsRef, id), {
+          transaction.set(doc(disciplineProgressRef, id), {
             disciplineKey: String(first.disciplineKey || current.disciplineKey || ""),
             disciplineName: String(first.disciplineName || current.disciplineName || ""),
             editorEmail: String(first.editorEmail || current.editorEmail || ""),
@@ -902,70 +988,171 @@ import {
         });
         transaction.set(stateRef, {
           ...stateData,
-          progressSchema: 3,
+          progressSchema: 4,
           revision: Number(stateData.revision || 0) + 1,
           updatedAt: serverTimestamp(),
           updatedBy: operatorName || "Migracao automatica",
           editorSessionId,
         });
       });
-      setStatus("Avancos otimizados - alternando para o modo economico", "online");
+      setStatus("Avancos consolidados - modo economico ativado", "online");
+      setTimeout(() => refreshFromServer({ forceFull: true }), 500);
     } catch (error) {
       console.error("Progress migration failed", error);
       setStatus("Modo economico aguardando nova tentativa - dados atuais preservados", "error");
       setTimeout(() => {
-        if (operator && Number(remoteStateData?.progressSchema || 2) < 3) migrateLegacyProgress(snapshot);
+        if (operator && Number(remoteStateData?.progressSchema || 2) < 4) {
+          migrateProgressToV4(snapshot, sourceSchema);
+        }
       }, 30000);
     } finally {
       migratingProgress = false;
     }
   }
 
-  function startProgressSync(requestedSchema) {
-    const schema = Number(requestedSchema || 2) >= 3 ? 3 : 2;
-    if (progressUnsubscribe && progressSchema === schema) return;
-    if (progressUnsubscribe) progressUnsubscribe();
-    progressSchema = schema;
-    progressLoaded = false;
-    const reference = schema >= 3 ? progressGroupsRef : legacyProgressRef;
-    progressUnsubscribe = onSnapshot(reference, (snapshot) => {
-      remoteProgress = progressFromSnapshot(snapshot, schema);
-      progressRevision += 1;
-      progressLoaded = true;
-      lastRemoteSignature = "";
-      applyAvailableRemote();
-      if (schema < 3 && operator) migrateLegacyProgress(snapshot);
-    }, (error) => {
-      console.error("Progress listener failed", error);
-      progressLoaded = true;
-      setStatus("Sem conexao com os avancos online - confira as regras", "error");
-    });
+  function cacheMetadata() {
+    try { return JSON.parse(localStorage.getItem(ECONOMIC_CACHE_KEY) || "null") || {}; } catch { return {}; }
   }
 
-  function startRealtimeSync() {
-    onSnapshot(stateRef, (snapshot) => {
-      remoteStateData = snapshot.exists() ? snapshot.data() : null;
-      stateLoaded = true;
-      if (remoteStateData) startProgressSync(remoteStateData.progressSchema);
-      applyAvailableRemote();
-    }, (error) => {
-      console.error("State listener failed", error);
-      stateLoaded = true;
-      setStatus("Sem conexão com a base online", "error");
-    });
+  function saveCacheMetadata(fullRefresh) {
+    try {
+      const previous = cacheMetadata();
+      localStorage.setItem(ECONOMIC_CACHE_KEY, JSON.stringify({
+        fullCompletedAt: fullRefresh ? Date.now() : Number(previous.fullCompletedAt || 0),
+        bucketUpdatedAtMs: lastBucketTimestamp?.toMillis?.() || 0,
+        progressUpdatedAtMs: lastProgressTimestamp?.toMillis?.() || 0,
+        progressSchema,
+      }));
+    } catch {}
+  }
 
-    onSnapshot(bucketsRef, (snapshot) => {
-      const next = new Map();
-      snapshot.forEach((item) => next.set(item.id, item.data()));
-      remoteBuckets = next;
-      bucketsLoaded = true;
-      applyAvailableRemote();
-    }, (error) => {
-      console.error("Activity listener failed", error);
-      bucketsLoaded = true;
-      setStatus("Sem conexão com as atividades online", "error");
-    });
+  function recordDocumentRead() {
+    readBudget.serverReads += 1;
+    readBudget.queries += 1;
+  }
 
+  function recordQueryReads(snapshot) {
+    readBudget.serverReads += billedQueryReads(snapshot?.size || 0);
+    readBudget.queries += 1;
+  }
+
+  function publishReadBudget() {
+    readBudget.lastRefreshAt = Date.now();
+    window.kaFirebaseReadBudget = { ...readBudget };
+  }
+
+  async function loadCachedData() {
+    try {
+      const stateSnapshot = await getDocFromCache(stateRef);
+      remoteStateData = stateSnapshot.exists() ? stateSnapshot.data() : null;
+      stateLoaded = true;
+    } catch {
+      stateLoaded = true;
+    }
+    progressSchema = Number(remoteStateData?.progressSchema || 4);
+    try {
+      const [bucketSnapshot, progressSnapshot] = await Promise.all([
+        getDocsFromCache(bucketsRef),
+        getDocsFromCache(progressReference(progressSchema)),
+      ]);
+      mergeBucketSnapshot(bucketSnapshot, true);
+      mergeProgressSnapshot(progressSnapshot, progressSchema, true);
+      readBudget.cacheLoads += bucketSnapshot.size + progressSnapshot.size + (remoteStateData ? 1 : 0);
+    } catch (error) {
+      console.warn("Cache local ainda nao esta disponivel", error);
+    }
+    bucketsLoaded = true;
+    progressLoaded = true;
+    applyAvailableRemote();
+  }
+
+  function incrementalReference(reference, timestamp) {
+    return timestamp ? query(reference, where("updatedAt", ">", timestamp)) : reference;
+  }
+
+  async function refreshFromServer(options = {}) {
+    if (refreshing || (document.visibilityState === "hidden" && !options.manual)) return false;
+    refreshing = true;
+    if (refreshTimer) {
+      clearTimeout(refreshTimer);
+      refreshTimer = null;
+    }
+    if (options.manual) setStatus("Atualizando os dados online...", "pending");
+    try {
+      const previousSchema = progressSchema;
+      const stateSnapshot = await getDocFromServer(stateRef);
+      recordDocumentRead();
+      remoteStateData = stateSnapshot.exists() ? stateSnapshot.data() : null;
+      stateLoaded = true;
+      progressSchema = Number(remoteStateData?.progressSchema || 4);
+
+      const metadata = cacheMetadata();
+      if (!lastBucketTimestamp && metadata.bucketUpdatedAtMs) {
+        lastBucketTimestamp = Timestamp.fromMillis(Math.max(0, Number(metadata.bucketUpdatedAtMs) - 1));
+      }
+      if (!lastProgressTimestamp && metadata.progressUpdatedAtMs && previousSchema === progressSchema) {
+        lastProgressTimestamp = Timestamp.fromMillis(Math.max(0, Number(metadata.progressUpdatedAtMs) - 1));
+      }
+      const expectedBuckets = Number(remoteStateData?.bucketCount || BUCKET_COUNT);
+      const forceFull = Boolean(options.forceFull)
+        || shouldRunFullRefresh(metadata.fullCompletedAt)
+        || remoteBuckets.size < expectedBuckets;
+      const fullProgress = forceFull || previousSchema !== progressSchema || !lastProgressTimestamp
+        || (operator && progressSchema < 4);
+      const bucketRequest = forceFull
+        ? bucketsRef
+        : incrementalReference(bucketsRef, lastBucketTimestamp);
+      const progressRef = progressReference(progressSchema);
+      const progressRequest = fullProgress
+        ? progressRef
+        : incrementalReference(progressRef, lastProgressTimestamp);
+      const [bucketSnapshot, progressSnapshot] = await Promise.all([
+        getDocsFromServer(bucketRequest),
+        getDocsFromServer(progressRequest),
+      ]);
+      recordQueryReads(bucketSnapshot);
+      recordQueryReads(progressSnapshot);
+      mergeBucketSnapshot(bucketSnapshot, forceFull);
+      mergeProgressSnapshot(progressSnapshot, progressSchema, fullProgress);
+      bucketsLoaded = true;
+      progressLoaded = true;
+      lastRemoteSignature = "";
+      saveCacheMetadata(forceFull);
+      publishReadBudget();
+      applyAvailableRemote();
+      if (progressSchema < 4 && operator) migrateProgressToV4(progressSnapshot, progressSchema);
+      return true;
+    } catch (error) {
+      console.error("Economic Firebase refresh failed", error);
+      setStatus("Dados locais preservados - atualizacao online indisponivel", "error");
+      return false;
+    } finally {
+      refreshing = false;
+      scheduleEconomicRefresh();
+    }
+  }
+
+  function scheduleEconomicRefresh(delay = ECONOMIC_REFRESH_MS) {
+    if (refreshTimer) clearTimeout(refreshTimer);
+    refreshTimer = null;
+    if (document.visibilityState === "hidden") return;
+    refreshTimer = setTimeout(() => refreshFromServer(), delay);
+  }
+
+  function startEconomicSync() {
+    loadCachedData().finally(() => refreshFromServer());
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") {
+        if (refreshTimer) clearTimeout(refreshTimer);
+        refreshTimer = null;
+        return;
+      }
+      const elapsed = Date.now() - Number(readBudget.lastRefreshAt || 0);
+      if (elapsed >= ECONOMIC_REFRESH_MS) refreshFromServer();
+      else scheduleEconomicRefresh(ECONOMIC_REFRESH_MS - elapsed);
+    });
+    window.addEventListener("online", () => refreshFromServer());
+    window.kaRefreshOnlineNow = () => refreshFromServer({ manual: true });
     renderEditorPresence();
   }
 
@@ -1014,10 +1201,16 @@ import {
     if (localAdmin !== operator) {
       try { sessionStorage.setItem("pcm_admin", operator ? "1" : "0"); } catch {}
     }
+    if (typeof window.kaApplyOnlineAdminRole === "function") {
+      window.kaApplyOnlineAdminRole(operator);
+    } else {
+      document.body.classList.toggle("admin-mode", operator);
+      if (!operator) document.body.classList.remove("bloq-admin-mode");
+    }
 
     publishDisciplineSession();
     installSaveHooks();
-    startRealtimeSync();
+    startEconomicSync();
   }
 
   boot();

@@ -3,13 +3,8 @@ export const PROGRESS_GROUP_BUCKETS = 8;
 
 export const SHARED_KEYS = [
   "schema",
-  "bloqueios",
-  "limpezas",
   "meetingPlan",
   "progressSnapshots",
-  "desbloqueios",
-  "desbloqueioSourceVersion",
-  "desbloqueioBaseName",
   "contatos",
   "refTime",
 ];
@@ -58,13 +53,8 @@ export function sharedPart(value) {
   return {
     schema: typeof state.schema === "string" ? state.schema : "ka_gestao_paradas_v2",
     activities: [],
-    bloqueios: Array.isArray(state.bloqueios) ? clone(state.bloqueios) : [],
-    limpezas: Array.isArray(state.limpezas) ? clone(state.limpezas) : [],
     meetingPlan: Array.isArray(state.meetingPlan) ? clone(state.meetingPlan) : [],
     progressSnapshots: Array.isArray(state.progressSnapshots) ? clone(state.progressSnapshots.slice(-500)) : [],
-    desbloqueios: Array.isArray(state.desbloqueios) ? clone(state.desbloqueios) : [],
-    desbloqueioSourceVersion: typeof state.desbloqueioSourceVersion === "string" ? state.desbloqueioSourceVersion : "",
-    desbloqueioBaseName: typeof state.desbloqueioBaseName === "string" ? state.desbloqueioBaseName : "",
     contatos: Array.isArray(state.contatos) ? clone(state.contatos) : [],
     refTime: typeof state.refTime === "string" ? state.refTime : "",
   };
@@ -90,6 +80,14 @@ export function progressGroupId(disciplineKey, activityId) {
   }
   const bucket = String((hash >>> 0) % PROGRESS_GROUP_BUCKETS).padStart(2, "0");
   return `${key}--${bucket}`;
+}
+
+// Modo economico v4: todos os avancos de uma disciplina ficam em um unico
+// documento. Isso limita o painel a poucos documentos, mesmo com centenas de
+// atividades, e permite que varias atualizacoes feitas entre duas consultas
+// sejam recebidas como uma unica leitura por disciplina.
+export function progressDisciplineId(disciplineKey) {
+  return encodeURIComponent(normalizeDiscipline(disciplineKey) || "SEM_DISCIPLINA");
 }
 
 export function buildBuckets(items) {
@@ -142,8 +140,12 @@ export function confirmActivityChanges(baselineEntries, changes) {
     if (!id) return;
     if (change.deleted) {
       confirmed.delete(id);
-    } else if (!confirmed.has(id) && change.next) {
-      confirmed.set(id, { activity: normalizeActivity(change.next), revision: 1 });
+    } else if (change.next) {
+      const previousRevision = Number(confirmed.get(id)?.revision || 0);
+      confirmed.set(id, {
+        activity: normalizeActivity(change.next),
+        revision: previousRevision + 1,
+      });
     }
   });
   return confirmed;
