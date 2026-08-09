@@ -41,13 +41,13 @@ import {
   resolveActivityChange,
   same,
   sharedPart,
-} from "./firebase-sync-core.mjs";
+} from "./firebase-sync-core.mjs?v=20260809-secure-login-1";
 import {
   ECONOMIC_FULL_REFRESH_MS,
   ECONOMIC_REFRESH_MS,
   billedQueryReads,
   shouldRunFullRefresh,
-} from "./firebase-economic-policy.mjs";
+} from "./firebase-economic-policy.mjs?v=20260809-secure-login-1";
 
 (function () {
   "use strict";
@@ -154,6 +154,21 @@ import {
         .ka-shared-refresh {background:#fff;border:1px solid #cbd9d2;border-radius:999px;color:#176044;
           cursor:pointer;font-size:10px;font-weight:850;padding:6px 10px}
         .ka-shared-refresh:hover {background:#eef8f3}
+        .ka-admin-login-overlay {align-items:center;background:rgba(7,25,18,.68);display:flex;inset:0;
+          justify-content:center;padding:18px;position:fixed;z-index:2147483647}
+        .ka-admin-login-dialog {background:#fff;border:1px solid #d9e6df;border-radius:18px;box-shadow:0 24px 70px rgba(0,0,0,.28);
+          color:#183b2c;max-width:420px;padding:24px;width:100%}
+        .ka-admin-login-dialog h2 {font-size:20px;margin:0 0 6px}
+        .ka-admin-login-dialog p {color:#52675d;font-size:13px;line-height:1.45;margin:0 0 18px}
+        .ka-admin-login-dialog label {display:block;font-size:12px;font-weight:850;margin:12px 0 5px}
+        .ka-admin-login-dialog input {background:#fff;border:1px solid #baccc2;border-radius:10px;box-sizing:border-box;
+          color:#173a2a;font-size:16px;padding:11px 12px;width:100%}
+        .ka-admin-login-dialog input:focus {border-color:#00834b;box-shadow:0 0 0 3px rgba(0,131,75,.13);outline:0}
+        .ka-admin-login-error {color:#ad2e24!important;font-weight:750;margin:9px 0 0!important;min-height:18px}
+        .ka-admin-login-actions {display:flex;gap:10px;justify-content:flex-end;margin-top:16px}
+        .ka-admin-login-actions button {border:0;border-radius:10px;cursor:pointer;font-weight:850;padding:10px 16px}
+        .ka-admin-login-cancel {background:#edf2ef;color:#345246}
+        .ka-admin-login-submit {background:#007c47;color:#fff}
         body:not(.admin-mode) input:not([type="search"]):not(#fEquipamento):not(#fBloqSearch),
         body:not(.admin-mode) textarea,
         body:not(.admin-mode) select:not(#fDisciplina):not(#fArea):not(#fStatus) {pointer-events:none}
@@ -162,6 +177,73 @@ import {
       `;
       document.head.appendChild(style);
     }
+  }
+
+  function requestOperatorCredentials(initialName = "") {
+    ensureStatusUi();
+    return new Promise((resolve) => {
+      document.getElementById("kaAdminLoginOverlay")?.remove();
+      const overlay = document.createElement("div");
+      overlay.id = "kaAdminLoginOverlay";
+      overlay.className = "ka-admin-login-overlay";
+      overlay.innerHTML = `
+        <div class="ka-admin-login-dialog" role="dialog" aria-modal="true" aria-labelledby="kaAdminLoginTitle">
+          <form id="kaAdminLoginForm" autocomplete="off">
+            <h2 id="kaAdminLoginTitle">Acesso administrativo</h2>
+            <p>Informe seu nome para o histórico e a senha de administrador. A senha nunca é preenchida pelo aplicativo.</p>
+            <label for="kaAdminOperatorName">Seu nome</label>
+            <input id="kaAdminOperatorName" type="text" maxlength="60" autocomplete="off" required>
+            <label for="kaAdminOperatorPassword">Senha</label>
+            <input id="kaAdminOperatorPassword" type="password" autocomplete="off" required>
+            <p id="kaAdminLoginError" class="ka-admin-login-error" role="alert"></p>
+            <div class="ka-admin-login-actions">
+              <button class="ka-admin-login-cancel" type="button">Cancelar</button>
+              <button class="ka-admin-login-submit" type="submit">Entrar</button>
+            </div>
+          </form>
+        </div>`;
+      document.body.appendChild(overlay);
+
+      const form = overlay.querySelector("#kaAdminLoginForm");
+      const nameInput = overlay.querySelector("#kaAdminOperatorName");
+      const passwordInput = overlay.querySelector("#kaAdminOperatorPassword");
+      const errorMessage = overlay.querySelector("#kaAdminLoginError");
+      const cancelButton = overlay.querySelector(".ka-admin-login-cancel");
+      nameInput.value = String(initialName || "").slice(0, 60);
+      passwordInput.name = `ka-admin-secret-${Date.now()}`;
+      passwordInput.value = "";
+
+      const finish = (credentials) => {
+        document.removeEventListener("keydown", onKeyDown);
+        overlay.remove();
+        resolve(credentials);
+      };
+      const onKeyDown = (event) => {
+        if (event.key === "Escape") finish(null);
+      };
+      document.addEventListener("keydown", onKeyDown);
+      cancelButton.addEventListener("click", () => finish(null));
+      overlay.addEventListener("click", (event) => {
+        if (event.target === overlay) finish(null);
+      });
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const name = nameInput.value.trim();
+        const password = passwordInput.value;
+        if (!name) {
+          errorMessage.textContent = "Informe seu nome para continuar.";
+          nameInput.focus();
+          return;
+        }
+        if (!password) {
+          errorMessage.textContent = "Informe a senha de administrador.";
+          passwordInput.focus();
+          return;
+        }
+        finish({ name, password });
+      });
+      requestAnimationFrame(() => (nameInput.value ? passwordInput : nameInput).focus());
+    });
   }
 
   function setStatus(message, tone) {
@@ -795,14 +877,9 @@ import {
   async function login() {
     let rememberedName = "";
     try { rememberedName = localStorage.getItem("ka_operator_name") || ""; } catch {}
-    const name = window.prompt("Digite seu nome para registrar as atualizações:", rememberedName);
-    if (name === null) return;
-    if (!name.trim()) {
-      window.alert("Informe seu nome para continuar.");
-      return;
-    }
-    const password = window.prompt("Senha compartilhada do editor (teste):", "PCM2026");
-    if (password === null) return;
+    const credentials = await requestOperatorCredentials(rememberedName);
+    if (!credentials) return;
+    const { name, password } = credentials;
     setStatus("Validando acesso de edição...", "pending");
     try {
       await setPersistence(auth, browserLocalPersistence);
