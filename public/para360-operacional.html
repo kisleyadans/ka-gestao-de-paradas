@@ -143,9 +143,6 @@ body.ka-app-layout .tabs{bottom:14px !important}
         <label>Área (Circuito)</label>
         <select id="fArea" onchange="renderAll()">
           <option value="">Todas</option>
-          <option value="USINA">🏭 USINA</option>
-          <option value="BRITAGEM">⛏️ BRITAGEM</option>
-          <option value="PRIMÁRIO">🪨 PRIMÁRIO</option>
         </select>
       </div>
       <div>
@@ -262,10 +259,10 @@ body.ka-app-layout .tabs{bottom:14px !important}
       </div>
 
       <div class="cc-section-heading">
-        <div><span>02</span><strong>Visão por área</strong><small>Usina, Britagem e Primário com Curva S individual</small></div>
+        <div><span>02</span><strong>Visão por área</strong><small>Todos os circuitos cadastrados com Curva S individual</small></div>
       </div>
       <div class="control-card cc-card cc-area-card">
-        <div class="control-card-header"><h3>🗺️ Performance por área</h3><span id="mgmtAreaMeta">761 atividades no filtro · 3 de 3 áreas com dados · clique para abrir a visão detalhada</span></div>
+        <div class="control-card-header"><h3>🗺️ Performance por área</h3><span id="mgmtAreaMeta">Carregando os circuitos cadastrados...</span></div>
         <div id="mgmtAreaSummaryGrid" class="mgmt-area-grid"></div>
       </div>
 
@@ -859,16 +856,59 @@ function filteredActivities(){
   return activities.filter(a=>{
     const es=getEffectiveStatus(a);
     return (!d || a.disciplina===d) &&
-           (!ar || String(a.area||'').toUpperCase()===ar.toUpperCase()) &&
+           (!ar || normalizeAreaKey(a.area)===normalizeAreaKey(ar)) &&
            (!eq || String(a.equipamento||'').toLowerCase().includes(eq) || String(a.atividade||'').toLowerCase().includes(eq)) &&
            (!st || es===st);
   }).sort((x,y)=>parseDate(x.inicio)-parseDate(y.inicio));
 }
 function unique(arr){ return [...new Set(arr.filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR')); }
+function normalizeAreaKey(value){
+  return String(value||'').trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
+}
+function areaConfigsFromActivities(list, includeDefaults=true){
+  const defaults = [
+    {key:'USINA', label:'Usina', icon:'\uD83C\uDFED', color:'#00693C', soft:'#E8F5EE'},
+    {key:'BRITAGEM', label:'Britagem', icon:'\u26CF\uFE0F', color:'#B58600', soft:'#FBF3DB'},
+    {key:'PRIMARIO', label:'Primário', icon:'\uD83E\uDEA8', color:'#14487F', soft:'#EAF3FB'}
+  ];
+  const extraColors = [
+    {color:'#7B4FA1',soft:'#F1EAF6'},
+    {color:'#008C95',soft:'#E6F5F6'},
+    {color:'#C05A17',soft:'#FCEFE7'},
+    {color:'#475569',soft:'#EEF1F5'},
+    {color:'#0F766E',soft:'#E7F5F2'},
+    {color:'#9A3412',soft:'#FCECE7'}
+  ];
+  const labels = new Map();
+  (Array.isArray(list)?list:[]).forEach(activity=>{
+    const label=String(activity&&activity.area||'').trim();
+    const key=normalizeAreaKey(label);
+    if(key&&!labels.has(key)) labels.set(key,label);
+  });
+  const result=[];
+  defaults.forEach(cfg=>{
+    if(includeDefaults||labels.has(cfg.key)) result.push({...cfg});
+    labels.delete(cfg.key);
+  });
+  Array.from(labels.entries())
+    .sort((a,b)=>a[1].localeCompare(b[1],'pt-BR'))
+    .forEach(([key,label],index)=>{
+      const style=extraColors[index%extraColors.length];
+      result.push({key,label,icon:'\u2699\uFE0F',color:style.color,soft:style.soft});
+    });
+  return result;
+}
 function updateFilterOptions(){
   const currD=$('fDisciplina').value;
+  const currA=$('fArea') ? $('fArea').value : '';
   $('fDisciplina').innerHTML = '<option value="">Todas</option>' + unique(activities.map(a=>a.disciplina)).map(x=>`<option>${escapeHtml(x)}</option>`).join('');
   $('fDisciplina').value = currD;
+  if($('fArea')){
+    const areas=areaConfigsFromActivities(activities,false);
+    $('fArea').innerHTML = '<option value="">Todas</option>' + areas.map(a=>`<option value="${escapeHtml(a.label)}">${a.icon} ${escapeHtml(a.label)}</option>`).join('');
+    const selectedArea=areas.find(a=>normalizeAreaKey(a.label)===normalizeAreaKey(currA));
+    $('fArea').value = selectedArea ? selectedArea.label : '';
+  }
 }
 function resetFilters(){
   ['fDisciplina','fStatus','fArea'].forEach(id=>{ const el=$(id); if(el) el.value=''; });
@@ -3717,14 +3757,10 @@ function renderAreaKpis(){
            (!st || es===st);
   });
 
-  const areas = [
-    {key:'USINA',    label:'Usina',    icon:'\uD83C\uDFED', color:'#00693C', soft:'#E8F5EE'},
-    {key:'BRITAGEM', label:'Britagem', icon:'\u26CF\uFE0F', color:'#B58600', soft:'#FBF3DB'},
-    {key:'PRIMÁRIO', label:'Primário', icon:'\uD83E\uDEA8', color:'#14487F', soft:'#EAF3FB'}
-  ];
+  const areas = areaConfigsFromActivities(activities,true);
 
   const data = areas.map(a => {
-    const list = baseList.filter(x => String(x.area||'').toUpperCase() === a.key);
+    const list = baseList.filter(x => normalizeAreaKey(x.area) === a.key);
     if(!list.length) return {area:a, empty:true};
     return {area:a, list, k:calcKpis(list)};
   });
@@ -3870,7 +3906,7 @@ function renderAreaKpis(){
           <div style="display:grid;grid-template-columns:1fr;gap:16px">${geralCardHTML}</div>
         </div>` : ''}
       <div style="display:flex;flex-direction:column;gap:10px">
-        ${sectionHeader('\uD83D\uDDFA\uFE0F','KPIs por Circuito','Compara\u00e7\u00e3o entre Usina, Britagem e Prim\u00e1rio')}
+        ${sectionHeader('\uD83D\uDDFA\uFE0F','KPIs por Circuito','Curva S individual para todos os circuitos cadastrados')}
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px">${areaCards}</div>
       </div>
     </div>`;
@@ -4165,13 +4201,9 @@ function renderMgmtAreaSummary(list){
   const grid = document.getElementById('mgmtAreaSummaryGrid');
   const meta = document.getElementById('mgmtAreaMeta');
   if(!grid) return;
-  const areas = [
-    {key:'USINA', label:'Usina', icon:'🏭', color:'#00693C'},
-    {key:'BRITAGEM', label:'Britagem', icon:'⛏️', color:'#B58600'},
-    {key:'PRIMÁRIO', label:'Primário', icon:'🪨', color:'#14487F'}
-  ];
+  const areas = areaConfigsFromActivities(activities,true);
   const rows = areas.map(cfg=>{
-    const areaList = list.filter(a=>String(a.area||'').toUpperCase() === cfg.key);
+    const areaList = list.filter(a=>normalizeAreaKey(a.area) === cfg.key);
     return {cfg, list: areaList, k: areaList.length ? calcKpis(areaList) : null};
   });
   const activeAreas = rows.filter(r=>r.list.length).length;
