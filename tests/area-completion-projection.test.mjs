@@ -169,6 +169,19 @@ test("atividade comum atrasada nao desloca o termino quando a impeditiva esta no
   assert.equal(result.maxDelayActivity, null);
 });
 
+test("impeditiva em andamento nao gera atraso oficial antes de ser classificada como atrasada", () => {
+  const result = runProjection([
+    { id:"IMP-EXEC", inicio:"2026-08-01T08:00:00Z", termino:"2026-08-01T09:00:00Z", progresso:25, status:"Em andamento", impeditivo:"Sim" },
+    { id:"COMUM-FIM", inicio:"2026-08-01T09:00:00Z", termino:"2026-08-01T12:00:00Z", progresso:0, status:"Não iniciada", impeditivo:"Não" },
+  ]);
+
+  assert.equal(result.delayMin, 0);
+  assert.equal(result.projectedEnd.toISOString(), "2026-08-01T12:00:00.000Z");
+  assert.equal(result.delayedProjected, 0);
+  assert.equal(result.maxDelayActivity, null);
+  assert.match(result.projectionBasis, /Nenhuma atividade impeditiva atrasada/);
+});
+
 test("somente a impeditiva atrasada desloca o termino projetado", () => {
   const result = runProjection([
     { id:"IMP-ATRASADA", inicio:"2026-08-01T08:00:00Z", termino:"2026-08-01T09:00:00Z", progresso:0, status:"Atrasada", impeditivo:"Sim" },
