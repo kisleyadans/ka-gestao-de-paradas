@@ -1,5 +1,7 @@
 import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { protectPublicBuild } from "./protect-public-build.mjs";
+import { runSecurityAudit } from "./security-audit.mjs";
 
 const root = process.cwd();
 const firebaseOutput = path.join(root, "firebase", "public");
@@ -27,5 +29,11 @@ await Promise.all([
   writeFile(path.join(pagesOutput, ".nojekyll"), "", "utf8"),
 ]);
 
+const release = await protectPublicBuild(pagesOutput, {
+  version: process.env.GITHUB_SHA || process.env.KA_RELEASE_VERSION || "local",
+});
+await runSecurityAudit({ root, distribution: pagesOutput });
+
 console.log(pagesOutput);
-console.log(`bytes=${Buffer.byteLength(html, "utf8")}`);
+console.log(`version=${release.version}`);
+console.log(`releaseHash=${release.releaseHash}`);
