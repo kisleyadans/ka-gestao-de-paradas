@@ -6528,23 +6528,39 @@ setInterval(function(){ try{ updateHeaderTimestamp(); }catch(e){} }, 30000);
     function historyAt(t){
       if(!scopedSnapshots.length) return reconstructedHistory(t);
       const first=scopedSnapshots[0];
+      let snapshotValue;
       if(t<=first.t){
         const baseAtFirst=reconstructedHistory(first.t);
-        if(baseAtFirst>0) return Math.min(currentReal,reconstructedHistory(t)*(first.value/baseAtFirst));
-        const ratio=Math.max(0,Math.min(1,(t-minD)/(first.t-minD||1)));
-        return first.value*ratio;
-      }
-      for(let i=1;i<scopedSnapshots.length;i++){
-        const prev=scopedSnapshots[i-1],next=scopedSnapshots[i];
-        if(t<=next.t){
-          const ratio=Math.max(0,Math.min(1,(t-prev.t)/(next.t-prev.t||1)));
-          return prev.value+(next.value-prev.value)*ratio;
+        if(baseAtFirst>0){
+          snapshotValue=Math.min(currentReal,reconstructedHistory(t)*(first.value/baseAtFirst));
+        }else{
+          const ratio=Math.max(0,Math.min(1,(t-minD)/(first.t-minD||1)));
+          snapshotValue=first.value*ratio;
+        }
+      }else{
+        for(let i=1;i<scopedSnapshots.length;i++){
+          const prev=scopedSnapshots[i-1],next=scopedSnapshots[i];
+          if(t<=next.t){
+            const ratio=Math.max(0,Math.min(1,(t-prev.t)/(next.t-prev.t||1)));
+            snapshotValue=prev.value+(next.value-prev.value)*ratio;
+            break;
+          }
+        }
+        if(snapshotValue===undefined){
+          const last=scopedSnapshots[scopedSnapshots.length-1];
+          if(now<=last.t){
+            snapshotValue=last.value;
+          }else{
+            const ratio=Math.max(0,Math.min(1,(t-last.t)/(now-last.t||1)));
+            snapshotValue=last.value+(currentReal-last.value)*ratio;
+          }
         }
       }
-      const last=scopedSnapshots[scopedSnapshots.length-1];
-      if(now<=last.t) return last.value;
-      const ratio=Math.max(0,Math.min(1,(t-last.t)/(now-last.t||1)));
-      return last.value+(currentReal-last.value)*ratio;
+
+      // O snapshot registra quando o dado chegou ao aplicativo, mas uma
+      // atividade concluida possui uma historia mais precisa nos horarios
+      // real/planejado. O apontamento tardio nunca pode apagar essa historia.
+      return Math.min(currentReal,Math.max(reconstructedHistory(t),snapshotValue||0));
     }
 
     const steps=72,pts=[];
