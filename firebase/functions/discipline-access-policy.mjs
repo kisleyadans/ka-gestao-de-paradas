@@ -22,11 +22,16 @@ function registerDiscipline(mappings, value, displayName = value) {
   const email = disciplineEmail(disciplineKey);
   if (!disciplineKey || !email) return;
   const current = mappings.get(email);
-  if (current && current.disciplineKey !== disciplineKey) {
-    throw new Error(`Colisão de disciplina para ${email}: ${current.disciplineKey} e ${disciplineKey}.`);
+  if (current) {
+    if (!current.disciplineKeys.includes(disciplineKey)) {
+      current.disciplineKeys.push(disciplineKey);
+      current.disciplineKeys.sort();
+    }
+    return;
   }
   mappings.set(email, {
     disciplineKey,
+    disciplineKeys: [disciplineKey],
     disciplineName: String(displayName || value || disciplineKey).trim() || disciplineKey,
   });
 }
@@ -54,11 +59,11 @@ export function accessRecordForUser(user, mappings, adminEmail = ADMIN_EMAIL) {
   const email = String(user?.email || "").toLowerCase().trim();
   if (!user?.uid || !email) return null;
   if (email === String(adminEmail).toLowerCase()) {
-    return { role: "admin", email, disciplineKey: "", disciplineName: "Administração", enabled: !user.disabled };
+    return { role: "admin", email, disciplineKey: "", disciplineKeys: [], disciplineName: "Administração", enabled: !user.disabled };
   }
   const discipline = mappings.get(email);
   if (!discipline) {
-    return { role: "unassigned", email, disciplineKey: "", disciplineName: "", enabled: false };
+    return { role: "unassigned", email, disciplineKey: "", disciplineKeys: [], disciplineName: "", enabled: false };
   }
   return { role: "discipline", email, ...discipline, enabled: !user.disabled };
 }
