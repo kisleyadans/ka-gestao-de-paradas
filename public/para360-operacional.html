@@ -6295,7 +6295,13 @@ setInterval(function(){ try{ updateHeaderTimestamp(); }catch(e){} }, 30000);
     const active=projected.filter(x=>x.projectionEligible);
     const impeditivas=projected.filter(x=>x.activity.impeditivo==='Sim');
     const activeImped=impeditivas.filter(x=>x.projectionEligible);
-    const delayedImped=activeImped.filter(x=>x.delayMin>0).sort((a,b)=>b.delayMin-a.delayMin);
+    // Uma impeditiva somente desloca o retorno da planta depois de estar
+    // efetivamente classificada como atrasada. Isso mantém os indicadores e a
+    // Curva S coerentes: impeditivas ainda "Em andamento" podem ter uma
+    // estimativa operacional de término, mas não geram atraso oficial.
+    const delayedImped=activeImped
+      .filter(x=>getEffectiveStatus(x.activity)==='Atrasada'&&x.delayMin>0)
+      .sort((a,b)=>b.delayMin-a.delayMin);
     const maxDelayActivity=delayedImped[0]||null;
     const impeditiveDelayMin=maxDelayActivity?Math.max(0,Number(maxDelayActivity.delayMin||0)):0;
     const forecast=sCurveForecast(valid);
@@ -6321,7 +6327,7 @@ setInterval(function(){ try{ updateHeaderTimestamp(); }catch(e){} }, 30000);
       maxDelayActivity,
       lateStartCount:active.filter(x=>x.startDelayMin>0).length,
       projectionBasis:impeditivas.length
-        ? (delayMin?'Maior atraso entre atividades impeditivas (retorno da planta)':'Nenhuma atividade impeditiva com atraso projetado')
+        ? (delayMin?'Maior atraso entre atividades impeditivas atrasadas (retorno da planta)':'Nenhuma atividade impeditiva atrasada — término planejado mantido')
         : 'Sem atividades impeditivas no escopo — término planejado mantido'
     };
   };
