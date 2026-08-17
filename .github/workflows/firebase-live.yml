@@ -7,21 +7,41 @@ on:
       - firestore.rules
       - firestore.indexes.json
       - firebase.json
+      - firebase/functions/discipline-access-policy.mjs
+      - firebase/functions/sync-discipline-access.mjs
+      - firebase/functions/package.json
+      - firebase/functions/package-lock.json
       - .github/workflows/firebase-live.yml
   workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: firebase-live
+  cancel-in-progress: false
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: firebase/functions/package-lock.json
+      - name: Instalar dependências administrativas verificadas
+        run: npm ci --prefix firebase/functions
       - name: Preparar credencial Firebase
         env:
           FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: node -e "require('fs').writeFileSync(process.env.RUNNER_TEMP + '/firebase-service-account.json', process.env.FIREBASE_SERVICE_ACCOUNT_JSON)"
+      - name: Vincular contas às disciplinas no servidor
+        env:
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-service-account.json
+        run: node firebase/functions/sync-discipline-access.mjs
       - name: Publicar somente regras e índices
         env:
           FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
