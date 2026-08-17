@@ -10,9 +10,10 @@
     "build": "vinext build",
     "build:firebase": "node work/build-firebase-site.mjs",
     "build:github-pages": "node work/build-github-pages.mjs",
+    "security:audit": "node work/security-audit.mjs",
     "firebase:emulators": "npm run build:firebase && npx firebase-tools@15.24.0 emulators:start --only hosting,firestore",
     "start": "vinext start",
-    "test": "npm run build && node --test --test-force-exit tests/rendered-html.test.mjs tests/concurrent-sync.test.mjs tests/firebase-free-sync.test.mjs",
+    "test": "npm run build && npm run build:github-pages && node --test --test-force-exit tests/rendered-html.test.mjs tests/concurrent-sync.test.mjs tests/firebase-free-sync.test.mjs tests/firebase-economic-mode.test.mjs tests/area-completion-projection.test.mjs tests/security-publication.test.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next --ignore-pattern work --ignore-pattern build",
     "db:generate": "drizzle-kit generate"
   },
@@ -36,6 +37,7 @@
     "react-server-dom-webpack": "19.2.6",
     "tailwindcss": "4.2.1",
     "typescript": "5.9.3",
+    "terser": "5.47.1",
     "vinext": "0.0.50",
     "vite": "8.0.13",
     "wrangler": "4.92.0"

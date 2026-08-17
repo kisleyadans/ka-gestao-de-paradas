@@ -2,9 +2,30 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    function accessPath() {
+      return /databases/$(database)/documents/ka_discipline_access/$(request.auth.uid);
+    }
+
+    function hasAccessRecord() {
+      return request.auth != null && exists(accessPath());
+    }
+
     function isSharedEditor() {
-      return request.auth != null
-        && request.auth.token.email == "operador@ka-paradas.app";
+      return hasAccessRecord()
+        && get(accessPath()).data.enabled == true
+        && get(accessPath()).data.role == "admin"
+        && get(accessPath()).data.email == request.auth.token.email;
+    }
+
+    function canEditDiscipline(disciplineKey, editorEmail) {
+      return isSharedEditor()
+        || (hasAccessRecord()
+          && get(accessPath()).data.enabled == true
+          && get(accessPath()).data.role == "discipline"
+          && get(accessPath()).data.disciplineKeys is list
+          && disciplineKey in get(accessPath()).data.disciplineKeys
+          && get(accessPath()).data.email == request.auth.token.email
+          && editorEmail == request.auth.token.email);
     }
 
     function hasAuditMetadata() {
@@ -55,7 +76,7 @@ service cloud.firestore {
         && request.resource.data.updatedBy is string
         && request.resource.data.editorSessionId is string
         && request.resource.data.updatedAt == request.time
-        && (isSharedEditor() || request.resource.data.editorEmail == request.auth.token.email);
+        && canEditDiscipline(request.resource.data.disciplineKey, request.resource.data.editorEmail);
       allow delete: if isSharedEditor();
     }
 
@@ -78,7 +99,7 @@ service cloud.firestore {
         && request.resource.data.editorSessionId is string
         && request.resource.data.editorSessionId.size() > 0
         && request.resource.data.updatedAt == request.time
-        && (isSharedEditor() || request.resource.data.editorEmail == request.auth.token.email);
+        && canEditDiscipline(request.resource.data.disciplineKey, request.resource.data.editorEmail);
       allow delete: if isSharedEditor();
     }
 
@@ -102,7 +123,7 @@ service cloud.firestore {
         && request.resource.data.editorSessionId is string
         && request.resource.data.editorSessionId.size() > 0
         && request.resource.data.updatedAt == request.time
-        && (isSharedEditor() || request.resource.data.editorEmail == request.auth.token.email);
+        && canEditDiscipline(request.resource.data.disciplineKey, request.resource.data.editorEmail);
       allow delete: if isSharedEditor();
     }
 
@@ -113,6 +134,11 @@ service cloud.firestore {
     }
 
     match /ka_editor_presence/{document} {
+      allow read, write: if false;
+    }
+
+    // ACL gerenciada exclusivamente pelo Firebase Admin durante a publicação.
+    match /ka_discipline_access/{document} {
       allow read, write: if false;
     }
 
