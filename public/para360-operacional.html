@@ -6293,13 +6293,11 @@ setInterval(function(){ try{ updateHeaderTimestamp(); }catch(e){} }, 30000);
     const plannedEnd=new Date(Math.max(...valid.map(a=>scheduleInfo(a).fim.getTime())));
     const projected=valid.map(a=>({activity:a,...projectedActivityTimes(a)}));
     const active=projected.filter(x=>x.projectionEligible);
-    const cp=active.filter(x=>x.activity.caminhoCritico==='Sim');
-    const cpMax=cp.sort((a,b)=>b.delayMin-a.delayMin)[0]||null;
-    const beyond=active.map(x=>({...x,beyondProject:Math.max(0,Math.round((x.end-plannedEnd)/60000))})).sort((a,b)=>b.beyondProject-a.beyondProject)[0]||null;
-    const cpDelay=cpMax?cpMax.delayMin:0, beyondDelay=beyond?beyond.beyondProject:0;
-    const useCP=cpDelay>=beyondDelay&&cpDelay>0;
-    const taskDelayMin=Math.max(0,cpDelay,beyondDelay);
-    const maxDelayActivity=taskDelayMin?(useCP?cpMax:beyond):null;
+    const impeditivas=projected.filter(x=>x.activity.impeditivo==='Sim');
+    const activeImped=impeditivas.filter(x=>x.projectionEligible);
+    const delayedImped=activeImped.filter(x=>x.delayMin>0).sort((a,b)=>b.delayMin-a.delayMin);
+    const maxDelayActivity=delayedImped[0]||null;
+    const impeditiveDelayMin=maxDelayActivity?Math.max(0,Number(maxDelayActivity.delayMin||0)):0;
     const forecast=sCurveForecast(valid);
     if(forecast&&forecast.completed){
       return {
@@ -6314,15 +6312,17 @@ setInterval(function(){ try{ updateHeaderTimestamp(); }catch(e){} }, 30000);
         actualEnd:forecast.actualEnd||forecast.plannedEnd
       };
     }
-    const delayMin=forecast?Math.max(0,Math.round(forecast.shiftMs/60000)):taskDelayMin;
+    const delayMin=impeditiveDelayMin;
     return {
-      plannedEnd:forecast?forecast.plannedEnd:plannedEnd,
-      projectedEnd:forecast?forecast.projectedEnd:new Date(plannedEnd.getTime()+taskDelayMin*60000),
+      plannedEnd,
+      projectedEnd:new Date(plannedEnd.getTime()+delayMin*60000),
       delayMin,
-      delayedProjected:active.filter(x=>x.delayMin>0).length,
+      delayedProjected:delayedImped.length,
       maxDelayActivity,
       lateStartCount:active.filter(x=>x.startDelayMin>0).length,
-      projectionBasis:forecast?'Desvio horizontal da Curva S (realizado × planejado)':(useCP?'Saldo informado/estimado no caminho crítico':'Atividade projetada além do término da parada')
+      projectionBasis:impeditivas.length
+        ? (delayMin?'Maior atraso entre atividades impeditivas (retorno da planta)':'Nenhuma atividade impeditiva com atraso projetado')
+        : 'Sem atividades impeditivas no escopo — término planejado mantido'
     };
   };
 
@@ -6446,7 +6446,7 @@ setInterval(function(){ try{ updateHeaderTimestamp(); }catch(e){} }, 30000);
     return pts;
   };
 
-  // Curva S v2.3: realizado contínuo e projeção deslocada pelo atraso atual.
+  // Curva S v2.4: realizado contínuo e projeção governada pelas impeditivas.
   // Sem apontamentos históricos, o avanço informado é distribuído entre o
   // início efetivo/planejado e a última atualização. Snapshots prevalecem.
   curvePoints=function(list){
@@ -6454,18 +6454,23 @@ setInterval(function(){ try{ updateHeaderTimestamp(); }catch(e){} }, 30000);
     if(!valid.length) return [];
 
     const forecast=sCurveForecast(valid);
+    const projection=projectionSummary(valid);
+    const projectionDelayMs=Math.max(0,Number(projection.delayMin||0))*60000;
+    const projectionEnd=projection.projectedEnd||forecast.plannedEnd;
     const now=forecast.now;
     const minD=new Date(Math.min(forecast.minD.getTime(),...valid.map(a=>(parseDate(a.inicioReal)||scheduleInfo(a).ini).getTime())));
     const curveReferenceEnd=forecast.completed?(forecast.actualEnd||forecast.plannedEnd):now;
     const maxD=new Date(Math.max(
       forecast.plannedEnd.getTime(),
-      forecast.projectedEnd.getTime(),
+      projectionEnd.getTime(),
       ...valid.map(a=>{const d=parseDate(a.terminoReal);return d?d.getTime():0;}),
       curveReferenceEnd.getTime()
     ));
     const total=forecast.total;
     const currentEarned=forecast.currentEarned;
     const currentReal=forecast.currentReal;
+    const projectionAnchorTime=new Date(now.getTime()-projectionDelayMs);
+    const projectionAnchorPlan=forecast.plannedAt(projectionAnchorTime);
     const scope=snapshotScope(valid);
     let dataAsOf=now;
     try{
@@ -6575,9 +6580,15 @@ setInterval(function(){ try{ updateHeaderTimestamp(); }catch(e){} }, 30000);
         lastReal=realPct;
       }
 
-      const projectedPct=t<=now
-        ? realPct
-        : Math.max(currentReal,forecast.plannedAt(new Date(t.getTime()-forecast.shiftMs)));
+      let projectedPct=realPct;
+      if(t>now){
+        const shiftedPlan=forecast.plannedAt(new Date(t.getTime()-projectionDelayMs));
+        const remainingPlan=Math.max(0,100-projectionAnchorPlan);
+        const futureRatio=remainingPlan
+          ? Math.max(0,Math.min(1,(shiftedPlan-projectionAnchorPlan)/remainingPlan))
+          : 1;
+        projectedPct=currentReal+(100-currentReal)*futureRatio;
+      }
 
       const roundedReal=Math.round(realPct);
       pts.push({
