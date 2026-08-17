@@ -21,16 +21,23 @@ test("normalização e e-mail da disciplina são determinísticos", () => {
 
 test("ACL vincula UID administrativo e disciplina sem confiar no formulário", () => {
   const mappings = collectDisciplineMappings({
-    bucketDocs: [{ entries: [{ activity: { disciplina: "Mecânica" } }] }],
+    bucketDocs: [{ entries: [
+      { activity: { disciplina: "Mecânica" } },
+      { activity: { disciplina: "Elétrica Bloqueio" } },
+      { activity: { disciplina: "Elétrica/Bloqueio" } },
+    ] }],
   });
   const admin = accessRecordForUser({ uid: "admin-uid", email: ADMIN_EMAIL, disabled: false }, mappings);
   const discipline = accessRecordForUser({ uid: "discipline-uid", email: "mecanica@ka-paradas.app", disabled: false }, mappings);
   const unknown = accessRecordForUser({ uid: "other-uid", email: "outra@ka-paradas.app", disabled: false }, mappings);
   assert.deepEqual(admin, {
-    role: "admin", email: ADMIN_EMAIL, disciplineKey: "", disciplineName: "Administração", enabled: true,
+    role: "admin", email: ADMIN_EMAIL, disciplineKey: "", disciplineKeys: [], disciplineName: "Administração", enabled: true,
   });
   assert.equal(discipline.role, "discipline");
   assert.equal(discipline.disciplineKey, "MECANICA");
+  assert.deepEqual(mappings.get("eletrica-bloqueio@ka-paradas.app").disciplineKeys, [
+    "ELETRICA BLOQUEIO", "ELETRICA/BLOQUEIO",
+  ]);
   assert.equal(unknown.enabled, false);
 });
 
@@ -38,6 +45,7 @@ test("regras exigem ACL do servidor e não expõem a coleção", async () => {
   const rules = await readFile(path.join(root, "firestore.rules"), "utf8");
   assert.match(rules, /ka_discipline_access\/\$\(request\.auth\.uid\)/);
   assert.match(rules, /canEditDiscipline\(request\.resource\.data\.disciplineKey/);
+  assert.match(rules, /disciplineKey in get\(accessPath\(\)\)\.data\.disciplineKeys/);
   assert.match(rules, /match \/ka_discipline_access\/\{document\}[\s\S]*allow read, write: if false;/);
   assert.doesNotMatch(rules, /isSharedEditor\(\) \|\| request\.resource\.data\.editorEmail/);
 });
