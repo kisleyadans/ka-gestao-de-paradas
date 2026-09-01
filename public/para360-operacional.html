@@ -870,6 +870,10 @@ body.ka-activity-table-expanded #view-atividades #activityTable td:nth-child(18)
             <label style="font-size:11px;font-weight:700;color:#40506A">Área</label>
             <select id="avArea" onchange="avRender()"><option value="all">Todas as áreas</option><option value="USINA">USINA</option></select>
           </div>
+          <div style="min-width:165px">
+            <label style="font-size:11px;font-weight:700;color:#40506A">Data da atividade</label>
+            <input id="avData" type="date" onchange="avRender()" title="Exibe as atividades programadas para ocorrer na data selecionada">
+          </div>
           <div>
             <label style="font-size:11px;font-weight:700;color:#40506A">Situação</label>
             <select id="avFiltro" onchange="avRender()">
@@ -5483,11 +5487,22 @@ setTimeout(()=>{
     const equipamento = (document.getElementById('avEquipamento')?.value||'').toLowerCase().trim();
     const disciplina = isAdmin() ? (document.getElementById('avDisciplina')?.value || 'all') : 'all';
     const area = document.getElementById('avArea')?.value || 'all';
+    const dataAtividade = document.getElementById('avData')?.value || '';
     if(equipamento) lista = lista.filter(a=>
       String(a.equipamento||'').toLowerCase().includes(equipamento)
     );
     if(disciplina!=='all') lista = lista.filter(a=>String(a.disciplina||'')===disciplina);
     if(area!=='all') lista = lista.filter(a=>String(a.area||'')===area);
+    if(dataAtividade){
+      const inicioDia = new Date(dataAtividade+'T00:00:00');
+      const fimDia = new Date(dataAtividade+'T23:59:59.999');
+      lista = lista.filter(a=>{
+        const inicioAtividade = parseDate(a.inicio);
+        const terminoAtividade = parseDate(a.termino) || inicioAtividade;
+        if(!inicioAtividade || isNaN(inicioAtividade)) return false;
+        return inicioAtividade <= fimDia && terminoAtividade >= inicioDia;
+      });
+    }
     const filtro = document.getElementById('avFiltro').value;
     if(busca) lista = lista.filter(a=>
       String(a.equipamento||'').toLowerCase().includes(busca) ||
