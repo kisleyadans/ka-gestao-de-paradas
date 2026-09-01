@@ -21,6 +21,8 @@ jobs:
           target="fe773cd2841352c9b096c3856917e6e1ec6e3e2c"
           expected_tree="cf486839bb4671532e2ff92ec620c1ba55725bc9"
           current="$(git rev-parse HEAD)"
+          git config user.name "kisleyadans"
+          git config user.email "52387882+kisleyadans@users.noreply.github.com"
           target_tree="$(git rev-parse "$target^{tree}")"
           test "$target_tree" = "$expected_tree"
           restored="$(printf '%s\n' 'Restaurar versao anterior a seguranca, preservando dados e historico' | git commit-tree "$target_tree" -p "$current")"
