@@ -3198,9 +3198,19 @@ function printMeeting(){
   setTimeout(()=>document.body.classList.remove('print-meeting'), 800);
 }
 function printReport(){
+  try { renderReport(); } catch(e) { console.error('renderReport before print failed', e); }
   document.body.classList.add('print-report');
-  window.print();
-  setTimeout(()=>document.body.classList.remove('print-report'), 800);
+  let restored=false;
+  const restore=()=>{
+    if(restored) return;
+    restored=true;
+    document.body.classList.remove('print-report');
+    window.removeEventListener('afterprint', restore);
+  };
+  window.addEventListener('afterprint', restore);
+  try { window.print(); }
+  catch(error){ restore(); alert('Não foi possível abrir a impressão do relatório.'); }
+  setTimeout(restore, 60000);
 }
 
 // ==== BLOQUEIOS INICIAIS (carregados da planilha bloqueios.xlsx - 324 itens) ====
@@ -8919,5 +8929,48 @@ setInterval(function(){ try{ updateHeaderTimestamp(); }catch(e){} }, 30000);
 })();
 </script>
 
+<style id="ka-report-print-fix">
+@media print{
+  @page{size:A4 landscape;margin:9mm}
+  #pcmAdminBar,.admin-bar,#kaV2ProjectBar{display:none!important}
+  html,body:not(.ka-dashboard-pdf){background:#fff!important;height:auto!important;min-height:0!important;overflow:visible!important;width:auto!important}
+  body:not(.ka-dashboard-pdf)>header,
+  body:not(.ka-dashboard-pdf)>.ka-menu-toggle,
+  body:not(.ka-dashboard-pdf)>.ka-menu-overlay,
+  body:not(.ka-dashboard-pdf)>.ka-mobile-title,
+  body:not(.ka-dashboard-pdf)>.ka-sidebar-footer,
+  body:not(.ka-dashboard-pdf) .tabs,
+  body:not(.ka-dashboard-pdf) .toolbar,
+  body:not(.ka-dashboard-pdf) #pcmAdminBar,
+  body:not(.ka-dashboard-pdf) #filtersCard,
+  body:not(.ka-dashboard-pdf) #saveToast,
+  body:not(.ka-dashboard-pdf) .autosave-chip,
+  body:not(.ka-dashboard-pdf) .no-print{display:none!important}
+  body:not(.ka-dashboard-pdf)>.wrap{display:block!important;height:auto!important;margin:0!important;max-width:none!important;min-height:0!important;overflow:visible!important;padding:0!important;width:100%!important}
+  body:not(.ka-dashboard-pdf) .view:not(#view-report){display:none!important}
+  body:not(.ka-dashboard-pdf) #view-report{display:block!important;height:auto!important;margin:0!important;overflow:visible!important;padding:0!important;width:100%!important}
+  body:not(.ka-dashboard-pdf) #reportContent{background:#fff!important;border:0!important;border-radius:0!important;box-shadow:none!important;color:#1f2937!important;display:block!important;font-size:8pt!important;line-height:1.3!important;margin:0!important;overflow:visible!important;padding:0!important;width:100%!important}
+  body:not(.ka-dashboard-pdf) .report-header{background:#00693c!important;border:0!important;border-top:3px solid #fdd500!important;border-radius:3mm!important;color:#fff!important;display:block!important;height:auto!important;margin:0 0 5mm!important;min-height:0!important;padding:6mm 8mm!important;position:static!important;width:100%!important;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+  body:not(.ka-dashboard-pdf) .report-header h1{font-size:18pt!important;line-height:1.1!important;margin:0 0 2mm!important}
+  body:not(.ka-dashboard-pdf) .report-header .rh-meta{font-size:8pt!important;line-height:1.4!important}
+  body:not(.ka-dashboard-pdf) .report-section{border-top:1px solid #dfe7e3!important;break-inside:auto!important;margin:4mm 0 0!important;page-break-inside:auto!important;padding-top:3mm!important}
+  body:not(.ka-dashboard-pdf) .report-header+.report-section{border-top:0!important;break-inside:avoid!important;margin-top:0!important;page-break-inside:avoid!important;padding-top:0!important}
+  body:not(.ka-dashboard-pdf) .report-section h3{break-after:avoid!important;color:#00693c!important;font-size:11pt!important;line-height:1.2!important;margin:0 0 2.5mm!important;padding-left:2.5mm!important;page-break-after:avoid!important}
+  body:not(.ka-dashboard-pdf) .report-section p,
+  body:not(.ka-dashboard-pdf) .report-section ul{margin:1.5mm 0 2.5mm!important}
+  body:not(.ka-dashboard-pdf) .report-summary-cards{display:grid!important;gap:2mm!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;margin:2.5mm 0!important}
+  body:not(.ka-dashboard-pdf) .report-summary-cards .rc{break-inside:avoid!important;padding:2.5mm 3mm!important;page-break-inside:avoid!important}
+  body:not(.ka-dashboard-pdf) .report-summary-cards .rc .lbl{font-size:7pt!important}
+  body:not(.ka-dashboard-pdf) .report-summary-cards .rc .val{font-size:14pt!important}
+  body:not(.ka-dashboard-pdf) .report table{border-collapse:collapse!important;font-size:7pt!important;line-height:1.25!important;margin:2mm 0 4mm!important;table-layout:auto!important;width:100%!important}
+  body:not(.ka-dashboard-pdf) .report thead{display:table-header-group!important}
+  body:not(.ka-dashboard-pdf) .report tfoot{display:table-footer-group!important}
+  body:not(.ka-dashboard-pdf) .report tr{break-inside:avoid!important;page-break-inside:avoid!important}
+  body:not(.ka-dashboard-pdf) .report th,
+  body:not(.ka-dashboard-pdf) .report td{overflow-wrap:anywhere!important;padding:1.5mm 1.8mm!important;vertical-align:top!important;white-space:normal!important;word-break:normal!important}
+  body:not(.ka-dashboard-pdf) .report th{background:#f0f7f3!important;color:#00693c!important;font-size:6.7pt!important;position:static!important;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+  body:not(.ka-dashboard-pdf) .report-section:last-child{break-inside:avoid!important;page-break-inside:avoid!important}
+}
+</style>
 <script type="module" src="/shared-sync.js?v=20260902-plan-sync-1"></script>
 </body></html>
