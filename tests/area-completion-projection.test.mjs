@@ -21,6 +21,10 @@ const areaConfigStart = panel.indexOf("function normalizeAreaKey(value){");
 const areaConfigEnd = panel.indexOf("function updateFilterOptions(){", areaConfigStart);
 assert.ok(areaConfigStart >= 0 && areaConfigEnd > areaConfigStart, "configuração dinâmica de circuitos deve existir");
 const areaConfigSource = panel.slice(areaConfigStart, areaConfigEnd);
+const healthStart = panel.indexOf("function computeControlHealth(k){");
+const healthEnd = panel.indexOf("\nfunction renderOperationalRibbon", healthStart);
+assert.ok(healthStart >= 0 && healthEnd > healthStart, "regra do farol operacional deve existir");
+const healthSource = panel.slice(healthStart, healthEnd);
 
 function runForecast(activities, now = "2026-08-01T18:00:00Z") {
   const context = {
@@ -97,6 +101,17 @@ function runProjection(activities, now = "2026-08-01T10:00:00Z") {
 function runAreaConfigs(activities, includeDefaults = true) {
   const context = { activities, includeDefaults, result: null };
   vm.runInNewContext(`${areaConfigSource}\nresult=areaConfigsFromActivities(activities,includeDefaults);`, context);
+  return context.result;
+}
+
+function runHealth(kpis) {
+  const context = {
+    result: null,
+    humanMin: (value) => `${Number(value || 0)}min`,
+    Math,
+    Number,
+  };
+  vm.runInNewContext(`${healthSource}\nresult=computeControlHealth(${JSON.stringify(kpis)});`, context);
   return context.result;
 }
 
@@ -250,4 +265,38 @@ test("atividades iniciais concluidas no plano permanecem aderentes durante a par
 
   assert.ok(completedWindow.length > 5);
   assert.ok(completedWindow.every((point) => point.real === point.plan));
+});
+
+test("atividade crítica atrasada sem impacto deixa o farol em atenção", () => {
+  const result = runHealth({
+    projectedDelayMin: 0,
+    criticalPathDelayed: 1,
+    delayed: 1,
+    deviation: 0,
+    progress: 70,
+    expected: 70,
+    done: 7,
+    total: 10,
+  });
+
+  assert.equal(result.cls, "warn");
+  assert.equal(result.label, "Atenção ao caminho crítico");
+  assert.match(result.meta, /sem atraso projetado para a partida/);
+});
+
+test("atraso oficial por impeditiva deixa o farol vermelho", () => {
+  const result = runHealth({
+    projectedDelayMin: 35,
+    criticalPathDelayed: 0,
+    delayed: 1,
+    deviation: 0,
+    progress: 70,
+    expected: 70,
+    done: 7,
+    total: 10,
+  });
+
+  assert.equal(result.cls, "bad");
+  assert.equal(result.label, "Risco de partida");
+  assert.match(result.meta, /governado por impeditiva/);
 });

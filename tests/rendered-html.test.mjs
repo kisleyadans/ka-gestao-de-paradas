@@ -26,9 +26,9 @@ test("inclui a sincronização gratuita e concorrente no painel publicado", asyn
     readFile(new URL("../firestore.rules", import.meta.url), "utf8"),
   ]);
 
-  assert.match(panel, /<script[^>]*src="\/shared-sync\.js\?v=20260806-1"[^>]*><\/script>/i);
+  assert.match(panel, /<script[^>]*src="\/shared-sync\.js\?v=20260903-curve-sync-1"[^>]*><\/script>/i);
   assert.match(panel, /<script id="pcm-initial-access-mode">/i);
-  assert.match(panel, /<script id="ka-blank-project-v2">/i);
+  assert.match(panel, /<script id="ka-v2-safe-migration">/i);
   assert.match(panel, /ka_project_database_generation/);
   assert.match(panel, /<body(?![^>]*\badmin-mode\b)[^>]*>/i);
   assert.doesNotMatch(panel, /<html[^>]*data-ka-offline-ready/i);
@@ -66,7 +66,7 @@ test("inclui a sincronização gratuita e concorrente no painel publicado", asyn
   assert.match(sync, /ka_free_activity_buckets_v2/);
   assert.match(sync, /ka_operator_name/);
   assert.match(sync, /pcmGetContatos/);
-  assert.match(sync, /Senha compartilhada do editor/i);
+  assert.match(sync, /Acesso administrativo/i);
   assert.match(sync, /ka_discipline_progress_v2/);
   assert.match(sync, /kaLoginDiscipline/);
   assert.match(sync, /kaSaveDisciplineProgress/);
@@ -104,7 +104,7 @@ test("inclui a sincronização gratuita e concorrente no painel publicado", asyn
   assert.match(panel, /quickActualField=async function/);
   assert.match(sync, /const shouldSaveActivities = pendingActivitySave/);
   assert.match(sync, /collectActivityChanges\(window\.activities, baselineActivities\)/);
-  assert.match(sync, /baselineActivities = confirmActivityChanges\(baselineActivities, changes\)/);
+  assert.match(sync, /baselineActivities = confirmActivityChanges\(baselineActivities, separatedChanges\.structural\)/);
   assert.match(sync, /Promise\.allSettled\(deletedChanges/);
   assert.match(panel, /async function deleteActivity\(id\)/);
   assert.match(panel, /await window\.kaSaveSharedNow\(\)/);
@@ -119,12 +119,20 @@ test("inclui a sincronização gratuita e concorrente no painel publicado", asyn
   assert.match(panel, /useSnapshotHistory\?\(window\.pcmProgressSnapshots\|\|\[\]\):\[\]/);
   assert.match(panel, /id="pcmDataQualityBanner" class="pcm-data-banner admin-hide"/);
   assert.match(panel, /b\.className='pcm-data-banner admin-hide '/);
-  assert.match(panel, /const avRascunhos = new Map\(\)/);
+  assert.match(panel, /pcmShowInvalidActivities/);
+  assert.match(panel, /Ver programações inválidas/);
+  assert.match(sync, /let firstServerRefreshComplete = false/);
+  assert.match(sync, /ka-sync-awaiting-online/);
+  assert.match(panel, /<body class="[^"]*ka-sync-awaiting-online[^"]*">/i);
+  assert.match(panel, /id="ka-initial-online-sync-guard"/i);
+  assert.match(sync, /if \(firstServerRefreshComplete\) applyAvailableRemote\(\)/);
+  assert.match(sync, /Dados locais · .*conexão online indisponível/);
   assert.match(panel, /window\.kaAvancoHasPendingEdits/);
-  assert.match(panel, /avCapturarRascunho\(id\)/);
+  assert.match(panel, /#view-avanco \.btn-save\.dirty/);
+  assert.match(panel, /active\.closest\('#planTableBody'\)/);
   assert.match(sync, /persistentMultipleTabManager/);
   assert.match(sync, /ka_discipline_progress_groups_v3/);
-  assert.match(sync, /migrateLegacyProgress/);
+  assert.match(sync, /migrateProgressToV4/);
   assert.match(sync, /window\.kaReleasePendingRemote = applyAvailableRemote/);
   assert.match(rules, /match \/ka_discipline_progress_groups_v3/);
 });
