@@ -385,6 +385,13 @@ body.ka-activity-table-expanded #view-atividades #activityTable td:nth-child(18)
   .ka-table-view-switch{display:none}
 }
 </style>
+<style id="ka-discipline-farol-update-style">
+#view-dashboard .disc-farol-head{min-height:44px}
+#view-dashboard .disc-farol-name{font-size:11px;line-height:1.18;white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;word-break:normal;padding-top:2px}
+#view-dashboard .disc-farol-head-meta{align-items:flex-end;display:flex;flex:0 0 auto;flex-direction:column;gap:4px;max-width:108px;min-width:76px}
+#view-dashboard .disc-farol-updated{color:#6b7685;font-size:8px;font-weight:750;line-height:1.15;text-align:right;white-space:normal}
+@media(max-width:640px){#view-dashboard .disc-farol-head{min-height:48px}#view-dashboard .disc-farol-name{font-size:10px}#view-dashboard .disc-farol-head-meta{max-width:96px}}
+</style>
 </head>
 <body class="ka-app-layout ka-firebase-mode"><button type="button" class="ka-activity-editor-overlay" aria-label="Fechar cadastro de atividade"></button><button type="button" class="ka-activity-editor-overlay" aria-label="Fechar cadastro de atividade"></button><button type="button" class="ka-menu-overlay" aria-label="Fechar menu principal"></button><button type="button" class="ka-menu-toggle" aria-label="Abrir menu principal" aria-expanded="false"><span aria-hidden="true"></span><span aria-hidden="true"></span><span aria-hidden="true"></span></button><div class="ka-mobile-title"><strong>K.A</strong><span>Gestão de Paradas</span></div>
 <script id="ka-v2-safe-migration">
@@ -3087,6 +3094,7 @@ function loadMeetingPlan(){
 }
 function saveMeetingPlan(){
   try{ localStorage.setItem('meetingPlan_TESTE_LOCAL', JSON.stringify(meetingPlan)); }catch(e){}
+  try{ if(typeof window.kaScheduleSharedSave==='function') window.kaScheduleSharedSave(250); }catch(e){}
 }
 function addPlanRow(){
   meetingPlan.push({acao:'', responsavel:'', prazo:'', status:'Pendente', obs:''});
@@ -4317,6 +4325,28 @@ function renderDashboardProExtras(){
   renderDashboardDisciplineFarol(list, k);
   renderDashboardAreaSummary(list);
 }
+function dashboardActivityUpdateDate(value){
+  try{
+    if(!value) return null;
+    if(typeof value.toDate === 'function'){
+      const converted = value.toDate();
+      return converted instanceof Date && !Number.isNaN(converted.getTime()) ? converted : null;
+    }
+    if(typeof value === 'object' && Number.isFinite(Number(value.seconds))){
+      const converted = new Date((Number(value.seconds) * 1000) + Math.floor(Number(value.nanoseconds || 0) / 1000000));
+      return Number.isNaN(converted.getTime()) ? null : converted;
+    }
+    const converted = value instanceof Date ? value : new Date(value);
+    return Number.isNaN(converted.getTime()) ? null : converted;
+  }catch(e){ return null; }
+}
+function dashboardDisciplineUpdateLabel(value){
+  const date = dashboardActivityUpdateDate(value);
+  if(!date) return 'Sem atualização';
+  const day = date.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
+  const time = date.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  return `${day} às ${time}`;
+}
 function renderDashboardDisciplineFarol(list, k){
   const el = document.getElementById('dashDisciplineFarol');
   if(!el) return;
@@ -4324,7 +4354,7 @@ function renderDashboardDisciplineFarol(list, k){
   const groups = {};
   (list||[]).forEach(a=>{
     const g = a.disciplina || 'Não informado';
-    if(!groups[g]) groups[g] = {total:0, due:0, done:0, late:0, notStarted:0, active:0, sumDur:0, sumProgDur:0};
+    if(!groups[g]) groups[g] = {total:0, due:0, done:0, late:0, notStarted:0, active:0, sumDur:0, sumProgDur:0, lastUpdatedAt:null, lastUpdatedBy:''};
     groups[g].total++;
     const s = getEffectiveStatus(a);
     const fim = parseDate(a.termino);
@@ -4333,6 +4363,11 @@ function renderDashboardDisciplineFarol(list, k){
     if(s === 'Atrasada') groups[g].late++;
     if(s === 'Não iniciada') groups[g].notStarted++;
     if(s === 'Em andamento') groups[g].active++;
+    const activityUpdatedAt = dashboardActivityUpdateDate(a.updatedAt);
+    if(activityUpdatedAt && (!groups[g].lastUpdatedAt || activityUpdatedAt > groups[g].lastUpdatedAt)){
+      groups[g].lastUpdatedAt = activityUpdatedAt;
+      groups[g].lastUpdatedBy = String(a.updatedBy || '');
+    }
     const d = durationMin(a);
     if(d>0){ groups[g].sumDur += d; groups[g].sumProgDur += d*Number(a.progresso||0); }
   });
@@ -4367,7 +4402,10 @@ function renderDashboardDisciplineFarol(list, k){
     return `<div class="disc-farol-tile ${r.farol}">
       <div class="disc-farol-head">
         <div class="disc-farol-name" title="${escapeHtml(r.name)}">${escapeHtml(r.name)}</div>
-        <div class="disc-farol-status ${r.farol}"><span class="light"></span>${label[r.farol]}</div>
+        <div class="disc-farol-head-meta">
+          <div class="disc-farol-status ${r.farol}"><span class="light"></span>${label[r.farol]}</div>
+          <div class="disc-farol-updated" title="${r.lastUpdatedBy ? `Última atualização por ${escapeHtml(r.lastUpdatedBy)}` : 'Horário da última atualização desta disciplina'}">Atualizado: ${dashboardDisciplineUpdateLabel(r.lastUpdatedAt)}</div>
+        </div>
       </div>
       <div class="disc-farol-body">
         <div class="disc-farol-ring ${r.farol}" style="--p:${prog}">
@@ -6798,7 +6836,68 @@ setInterval(function(){ try{ updateHeaderTimestamp(); }catch(e){} }, 30000);
   try{Object.defineProperty(window,'activities',{configurable:true,get:()=>activities,set:v=>{activities=v;}});}catch(e){}
   try{Object.defineProperty(window,'bloqueios',{configurable:true,get:()=>bloqueios,set:v=>{bloqueios=v;}});}catch(e){}
   try{Object.defineProperty(window,'limpezas',{configurable:true,get:()=>limpezas,set:v=>{limpezas=v;}});}catch(e){}
-  try{Object.defineProperty(window,'meetingPlan_TESTE_LOCAL',{configurable:true,get:()=>meetingPlan,set:v=>{meetingPlan=v;}});}catch(e){}
+  // Mantém o Plano de Ação ligado ao mesmo estado que o Firebase lê e grava.
+  // A versão anterior expunha somente "meetingPlan_TESTE_LOCAL" no window;
+  // por isso a tela e o sincronizador trabalhavam com listas diferentes.
+  const meetingPlanSignature=p=>JSON.stringify({
+    acao:String(p&&p.acao||'').trim(),responsavel:String(p&&p.responsavel||'').trim(),
+    prazo:String(p&&p.prazo||''),status:String(p&&p.status||'Pendente'),obs:String(p&&p.obs||'').trim()
+  });
+  const meaningfulPlanRow=p=>Boolean(String(p&&p.acao||'').trim()||String(p&&p.responsavel||'').trim()||String(p&&p.prazo||'').trim()||String(p&&p.obs||'').trim());
+  const meetingPlanStartupDraft=Array.isArray(meetingPlan)?meetingPlan.map(p=>Object.assign({},p)):[];
+  try{
+    const backup=JSON.parse(localStorage.getItem('ka_meeting_plan_recovery_backup_v1')||'[]');
+    const seen=new Set(meetingPlanStartupDraft.map(meetingPlanSignature));
+    if(Array.isArray(backup))backup.filter(meaningfulPlanRow).forEach(p=>{if(!seen.has(meetingPlanSignature(p))){meetingPlanStartupDraft.push(Object.assign({},p));seen.add(meetingPlanSignature(p));}});
+  }catch(e){}
+  let meetingPlanRemoteApplied=false;
+  function publishMeetingPlanState(value){
+    const incoming=Array.isArray(value)?value.map(p=>Object.assign({},p)):[];
+    let next=incoming;
+    if(!meetingPlanRemoteApplied){
+      meetingPlanRemoteApplied=true;
+      let isAdmin=false,recoveryDone=false;
+      try{isAdmin=sessionStorage.getItem('pcm_admin')==='1';recoveryDone=localStorage.getItem('ka_meeting_plan_bridge_recovered_v1')==='1';}catch(e){}
+      if(isAdmin&&!recoveryDone){
+        const seen=new Set(incoming.map(meetingPlanSignature));
+        const recovered=meetingPlanStartupDraft.filter(meaningfulPlanRow).filter(p=>!seen.has(meetingPlanSignature(p)));
+        if(recovered.length){
+          next=incoming.concat(recovered.map(p=>Object.assign({},p)));
+          try{localStorage.setItem('ka_meeting_plan_recovery_backup_v1',JSON.stringify(next));}catch(e){}
+          setTimeout(async function(){
+            try{
+              if(typeof window.kaSaveSharedNow!=='function')throw new Error('Sincronização ainda indisponível');
+              await window.kaSaveSharedNow();
+              localStorage.setItem('ka_meeting_plan_bridge_recovered_v1','1');
+              localStorage.removeItem('ka_meeting_plan_recovery_backup_v1');
+              if(typeof window.kaRefreshOnlineNow==='function')await window.kaRefreshOnlineNow();
+            }catch(e){console.warn('Plano de Ação preservado localmente para nova tentativa de sincronização.',e);}
+          },0);
+        }else{
+          try{localStorage.setItem('ka_meeting_plan_bridge_recovered_v1','1');localStorage.removeItem('ka_meeting_plan_recovery_backup_v1');}catch(e){}
+        }
+      }
+    }
+    meetingPlan=next;
+    try{localStorage.setItem('meetingPlan_TESTE_LOCAL',JSON.stringify(meetingPlan));}catch(e){}
+  }
+  try{Object.defineProperty(window,'meetingPlan',{configurable:true,get:()=>meetingPlan,set:publishMeetingPlanState});}catch(e){}
+  try{Object.defineProperty(window,'meetingPlan_TESTE_LOCAL',{configurable:true,get:()=>meetingPlan,set:publishMeetingPlanState});}catch(e){}
+
+  // O sincronizador já respeita kaAvancoHasPendingEdits. Incluímos nele os
+  // campos do Plano de Ação para que uma atualização remota não apague texto
+  // ainda em digitação antes do evento "change" concluir o salvamento.
+  window.kaAvancoHasPendingEdits=function(){
+    const active=document.activeElement;
+    const editingPlan=Boolean(active&&active.closest&&active.closest('#planTableBody'));
+    const dirtyProgress=document.querySelectorAll('#view-avanco .btn-save.dirty').length>0;
+    return editingPlan||dirtyProgress;
+  };
+  window.kaAvancoPendingCount=function(){
+    const dirty=document.querySelectorAll('#view-avanco .btn-save.dirty').length;
+    const active=document.activeElement;
+    return Math.max(1,dirty+(active&&active.closest&&active.closest('#planTableBody')?1:0));
+  };
 
   const priorSave=window.saveLocal;
   window.saveLocal=function(){const r=priorSave.apply(this,arguments);recordSnapshot();return r;};
@@ -8820,5 +8919,5 @@ setInterval(function(){ try{ updateHeaderTimestamp(); }catch(e){} }, 30000);
 })();
 </script>
 
-<script type="module" src="/shared-sync.js?v=20260809-progress-split-1"></script>
+<script type="module" src="/shared-sync.js?v=20260902-plan-sync-1"></script>
 </body></html>

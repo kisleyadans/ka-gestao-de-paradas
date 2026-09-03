@@ -709,6 +709,7 @@ import {
     pendingActivitySave = false;
     setStatus("Sincronizando alterações...", "pending");
     let saveFailed = false;
+    let saveConflicted = false;
     try {
       const changes = shouldSaveActivities
         ? collectActivityChanges(window.activities, baselineActivities)
@@ -748,6 +749,7 @@ import {
       const sharedResult = await saveSharedChanges(currentShared);
       const conflicts = [...activityResult.conflicts, ...sharedResult.conflicts];
       if (conflicts.length > 0) {
+        saveConflicted = true;
         setStatus("Online · conflito identificado; a versão mais recente foi preservada", "error");
         if (typeof window.showSaveToast === "function") {
           window.showSaveToast("⚠ Outra pessoa alterou o mesmo item. A versão online mais recente foi preservada.");
@@ -774,7 +776,7 @@ import {
       if (!dirty && pendingRemote) applyAvailableRemote();
       if (dirty && !saveFailed) scheduleSave(120);
     }
-    return !saveFailed;
+    return !saveFailed && !saveConflicted;
   }
 
   function scheduleSave(delay, includeActivities) {
