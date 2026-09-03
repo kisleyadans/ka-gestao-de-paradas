@@ -113,6 +113,13 @@ import {
   let lastProgressTimestamp = null;
   let progressDocumentOwners = new Map();
   let readBudget = { serverReads: 0, queries: 0, cacheLoads: 0, lastRefreshAt: 0 };
+  let firstServerRefreshComplete = false;
+
+  function setInitialSyncPending(pending) {
+    document.body?.classList.toggle("ka-sync-awaiting-online", Boolean(pending));
+    document.documentElement.dataset.kaInitialOnlineSync = pending ? "pending" : "complete";
+    window.kaInitialOnlineSyncComplete = !pending;
+  }
 
   function ensureStatusUi() {
     const bar = document.getElementById("pcmAdminBar");
@@ -290,6 +297,18 @@ import {
     const date = raw ? new Date(raw) : new Date();
     if (Number.isNaN(date.getTime())) return "agora";
     return date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  }
+
+  function dateTimeLabel(value) {
+    const raw = value && typeof value.toDate === "function" ? value.toDate() : value;
+    const date = raw ? new Date(raw) : null;
+    if (!date || Number.isNaN(date.getTime())) return "horário não disponível";
+    return date.toLocaleString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   }
 
   function createEditorSessionId() {
@@ -1197,7 +1216,7 @@ import {
     }
     bucketsLoaded = true;
     progressLoaded = true;
-    applyAvailableRemote();
+    if (firstServerRefreshComplete) applyAvailableRemote();
   }
 
   function incrementalReference(reference, timestamp) {
@@ -1211,7 +1230,9 @@ import {
       clearTimeout(refreshTimer);
       refreshTimer = null;
     }
-    if (options.manual) setStatus("Atualizando os dados online...", "pending");
+    if (options.manual || !firstServerRefreshComplete) {
+      setStatus("Atualizando os dados online...", "pending");
+    }
     try {
       const previousSchema = progressSchema;
       const stateSnapshot = await getDocFromServer(stateRef);
@@ -1253,12 +1274,26 @@ import {
       lastRemoteSignature = "";
       saveCacheMetadata(forceFull);
       publishReadBudget();
+      firstServerRefreshComplete = true;
+      setInitialSyncPending(false);
       applyAvailableRemote();
       if (progressSchema < 4 && operator) migrateProgressToV4(progressSnapshot, progressSchema);
       return true;
     } catch (error) {
       console.error("Economic Firebase refresh failed", error);
-      setStatus("Dados locais preservados - atualizacao online indisponivel", "error");
+      const firstFailure = !firstServerRefreshComplete;
+      if (firstFailure) {
+        firstServerRefreshComplete = true;
+        setInitialSyncPending(false);
+        applyAvailableRemote();
+      }
+      const cachedAt = remoteStateData?.updatedAt;
+      setStatus(
+        cachedAt
+          ? `Dados locais · ${dateTimeLabel(cachedAt)} · conexão online indisponível`
+          : "Dados locais · conexão online indisponível",
+        "error",
+      );
       return false;
     } finally {
       refreshing = false;
@@ -1274,6 +1309,8 @@ import {
   }
 
   function startEconomicSync() {
+    setInitialSyncPending(true);
+    setStatus("Atualizando os dados online...", "pending");
     loadCachedData().finally(() => refreshFromServer());
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "hidden") {
@@ -1287,7 +1324,6 @@ import {
     });
     window.addEventListener("online", () => refreshFromServer());
     window.kaRefreshOnlineNow = () => refreshFromServer({ manual: true });
-    renderEditorPresence();
   }
 
   async function boot() {

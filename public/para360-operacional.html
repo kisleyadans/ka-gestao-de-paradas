@@ -392,8 +392,32 @@ body.ka-activity-table-expanded #view-atividades #activityTable td:nth-child(18)
 #view-dashboard .disc-farol-updated{color:#6b7685;font-size:8px;font-weight:750;line-height:1.15;text-align:right;white-space:normal}
 @media(max-width:640px){#view-dashboard .disc-farol-head{min-height:48px}#view-dashboard .disc-farol-name{font-size:10px}#view-dashboard .disc-farol-head-meta{max-width:96px}}
 </style>
+<style id="ka-initial-online-sync-style">
+body.ka-sync-awaiting-online .view.active{min-height:360px;position:relative}
+body.ka-sync-awaiting-online .view.active>*{visibility:hidden!important}
+body.ka-sync-awaiting-online .view.active::before{
+  align-items:center;background:#f8fbf9;border:1px solid #d8e7df;border-radius:16px;color:#38584a;
+  content:"Atualizando dados online — os indicadores serão exibidos após a confirmação do Firebase.";
+  display:flex;font-size:14px;font-weight:800;inset:18px;justify-content:center;line-height:1.45;
+  padding:28px;position:absolute;text-align:center;visibility:visible;z-index:5
+}
+</style>
 </head>
-<body class="ka-app-layout ka-firebase-mode"><button type="button" class="ka-activity-editor-overlay" aria-label="Fechar cadastro de atividade"></button><button type="button" class="ka-activity-editor-overlay" aria-label="Fechar cadastro de atividade"></button><button type="button" class="ka-menu-overlay" aria-label="Fechar menu principal"></button><button type="button" class="ka-menu-toggle" aria-label="Abrir menu principal" aria-expanded="false"><span aria-hidden="true"></span><span aria-hidden="true"></span><span aria-hidden="true"></span></button><div class="ka-mobile-title"><strong>K.A</strong><span>Gestão de Paradas</span></div>
+<body class="ka-app-layout ka-firebase-mode ka-sync-awaiting-online"><button type="button" class="ka-activity-editor-overlay" aria-label="Fechar cadastro de atividade"></button><button type="button" class="ka-activity-editor-overlay" aria-label="Fechar cadastro de atividade"></button><button type="button" class="ka-menu-overlay" aria-label="Fechar menu principal"></button><button type="button" class="ka-menu-toggle" aria-label="Abrir menu principal" aria-expanded="false"><span aria-hidden="true"></span><span aria-hidden="true"></span><span aria-hidden="true"></span></button><div class="ka-mobile-title"><strong>K.A</strong><span>Gestão de Paradas</span></div>
+<script id="ka-initial-online-sync-guard">
+(function(){
+  window.setTimeout(function(){
+    if(window.kaInitialOnlineSyncComplete)return;
+    document.body.classList.remove('ka-sync-awaiting-online');
+    document.documentElement.dataset.kaInitialOnlineSync='fallback';
+    var status=document.getElementById('kaSharedStatus');
+    if(status){
+      status.className='ka-shared-status error';
+      status.textContent='Dados locais · conexão online indisponível';
+    }
+  },15000);
+})();
+</script>
 <script id="ka-v2-safe-migration">
 (function(){
   // K.A V2: migração não destrutiva. Nunca limpa dados existentes automaticamente.
@@ -2077,10 +2101,15 @@ function renderDiscBars(){
 }
 
 function computeControlHealth(k){
-  if(k.criticalPathDelayed > 0 || (k.projectedDelayMin||0) > 120){
-    return {cls:'bad', icon:'🔴', label:'Risco de partida', meta:`${k.criticalPathDelayed} crítica(s) atrasada(s) · projeção +${humanMin(k.projectedDelayMin||0)}`};
+  const projectedDelay=Math.max(0,Number(k.projectedDelayMin||0));
+  const criticalDelayed=Math.max(0,Number(k.criticalPathDelayed||0));
+  if(projectedDelay>0){
+    return {cls:'bad', icon:'🔴', label:'Risco de partida', meta:`Atraso oficial projetado +${humanMin(projectedDelay)} · governado por impeditiva`};
   }
-  if(k.delayed > 0 || k.deviation < -5 || (k.projectedDelayMin||0) > 0){
+  if(criticalDelayed>0){
+    return {cls:'warn', icon:'🟡', label:'Atenção ao caminho crítico', meta:`${criticalDelayed} crítica(s) atrasada(s) · sem atraso projetado para a partida`};
+  }
+  if(k.delayed > 0 || k.deviation < -5){
     return {cls:'warn', icon:'🟡', label:'Atenção', meta:`${k.delayed} atrasada(s) · desvio ${k.deviation>0?'+':''}${k.deviation}pp · projeção +${humanMin(k.projectedDelayMin||0)}`};
   }
   return {cls:'ok', icon:'🟢', label:'Parada controlada', meta:`Avanço ${k.progress}% / Planejado ${k.expected}% · ${k.done}/${k.total} concluídas`};
@@ -2532,17 +2561,9 @@ function renderReport(){
   const areaRows=groupSummary(list,'area').sort((a,b)=>b.progress-a.progress);
 
   // Health & filters context
-  let healthTxt, healthCls;
-  if(k.criticalPathDelayed>0 || (k.projectedDelayMin||0)>120){
-    healthTxt='🔴 Risco de partida — atrasos críticos e/ou projeção > 2h';
-    healthCls='bad';
-  } else if(k.delayed>0 || k.deviation<-5){
-    healthTxt='🟡 Atenção — há atrasos ou desvio negativo do planejado';
-    healthCls='warn';
-  } else {
-    healthTxt='🟢 Parada controlada — dentro do planejado';
-    healthCls='good';
-  }
+  const health=computeControlHealth(k);
+  const healthTxt=`${health.icon} ${health.label} — ${health.meta}`;
+  const healthCls=health.cls==='ok'?'good':health.cls;
   const activeFilters = [];
   const f = id => document.getElementById(id)?.value?.trim();
   if(f('fDisciplina')) activeFilters.push('Disciplina: '+f('fDisciplina'));
@@ -2551,7 +2572,8 @@ function renderReport(){
   const filterTxt = activeFilters.length ? activeFilters.join(' · ') : 'Sem filtros aplicados';
 
   const rec = [];
-  if(k.criticalPathDelayed>0) rec.push('Tratar imediatamente os atrasos do caminho crítico — impactam a partida direta.');
+  if((k.projectedDelayMin||0)>0) rec.push('Tratar imediatamente a atividade impeditiva que está deslocando o horário projetado de partida.');
+  else if(k.criticalPathDelayed>0) rec.push('Acompanhar as atividades atrasadas do caminho crítico; no momento elas não deslocam o horário projetado de partida.');
   if(k.deviation < -5) rec.push('Reforçar plano de recuperação da curva S, priorizando atividades críticas e caminho de partida.');
   if(k.criticalDelayed>0) rec.push('Tratativa gerencial dos atrasos de alta criticidade com responsável, prazo e apoio necessário.');
   if(active.length) rec.push('Acompanhamento horário das atividades em execução, principalmente as próximas do término planejado.');
@@ -6208,7 +6230,7 @@ setInterval(function(){ try{ updateHeaderTimestamp(); }catch(e){} }, 30000);
 <!-- === FIM DO PATCH === -->
 
 <!-- ===== REVISÃO OPERACIONAL v2.0 — avanço real manual e projeção auditável ===== -->
-<style>.pcm-data-banner{margin:10px 0 14px;padding:10px 14px;border:1px solid #EFDFB4;border-left:5px solid #EAAA00;border-radius:10px;background:#FFF9E8;color:#5F4B00;font-size:11.5px;line-height:1.45}.pcm-data-banner.good{border-color:#C7E6D3;border-left-color:#008542;background:#F1FAF5;color:#00693C}.pcm-data-banner strong{font-weight:900}.pcm-invalid-row{background:#FFF8F0!important}.pcm-invalid-cell{color:#A83426;font-weight:800;font-size:10.5px}.pcm-manual-note{margin:8px 0;padding:8px 11px;border-radius:9px;background:#EAF3FB;border:1px solid #C7DBEE;color:#14487F;font-size:11px;font-weight:700}#activityTable td .actual-input{min-width:142px;font-size:10.5px;padding:5px}#activityTable td .remaining-input{width:72px;font-size:10.5px;padding:5px;text-align:center}</style>
+<style>.pcm-data-banner{margin:10px 0 14px;padding:10px 14px;border:1px solid #EFDFB4;border-left:5px solid #EAAA00;border-radius:10px;background:#FFF9E8;color:#5F4B00;font-size:11.5px;line-height:1.45}.pcm-data-banner.good{border-color:#C7E6D3;border-left-color:#008542;background:#F1FAF5;color:#00693C}.pcm-data-banner strong{font-weight:900}.pcm-data-banner-action{background:#fff;border:1px solid #d9c574;border-radius:999px;box-shadow:none;color:#654d00;font-size:10px;margin-left:10px;padding:5px 9px;text-transform:none}.pcm-data-banner-action:hover{background:#fff3bd;box-shadow:none}.pcm-invalid-row{background:#FFF8F0!important}.pcm-invalid-cell{color:#A83426;font-weight:800;font-size:10.5px}.pcm-manual-note{margin:8px 0;padding:8px 11px;border-radius:9px;background:#EAF3FB;border:1px solid #C7DBEE;color:#14487F;font-size:11px;font-weight:700}#activityTable td .actual-input{min-width:142px;font-size:10.5px;padding:5px}#activityTable td .remaining-input{width:72px;font-size:10.5px;padding:5px;text-align:center}</style>
 <script>
 (function(){
   'use strict';
@@ -6807,11 +6829,17 @@ setInterval(function(){ try{ updateHeaderTimestamp(); }catch(e){} }, 30000);
     return {invalid,blank,duplicateExtra};
   }
   window.pcmQualityStats=qualityStats;
+  window.pcmShowInvalidActivities=function(){
+    const statusFilter=$('fStatus');
+    if(statusFilter) statusFilter.value='Dados inválidos';
+    showTab('atividades',findTabByText('Atividades cadastradas'));
+    renderAll();
+  };
   function renderQuality(){
     const q=qualityStats(), header=document.querySelector('#view-dashboard .cc-command-header');if(!header)return;
     let b=document.getElementById('pcmDataQualityBanner');if(!b){b=document.createElement('div');b.id='pcmDataQualityBanner';b.className='pcm-data-banner admin-hide';header.insertAdjacentElement('afterend',b);}
     const has=q.invalid||q.blank||q.duplicateExtra;b.className='pcm-data-banner admin-hide '+(has?'':'good');
-    b.innerHTML=has?`<strong>⚠ Qualidade dos dados:</strong> ${q.invalid} programação(ões) inválida(s) · ${q.blank} sem descrição · ${q.duplicateExtra} possível(is) duplicidade(s). Itens inválidos foram excluídos dos KPIs e da projeção.`:'<strong>✓ Dados validados:</strong> nenhuma inconsistência estrutural encontrada.';
+    b.innerHTML=has?`<strong>⚠ Qualidade dos dados:</strong> ${q.invalid} programação(ões) inválida(s) · ${q.blank} sem descrição · ${q.duplicateExtra} possível(is) duplicidade(s). Itens inválidos foram excluídos dos KPIs e da projeção.${q.invalid?`<button type="button" class="pcm-data-banner-action" onclick="pcmShowInvalidActivities()">Ver programações inválidas</button>`:''}`:'<strong>✓ Dados validados:</strong> nenhuma inconsistência estrutural encontrada.';
     const bm=document.getElementById('bloqueioMeta');if(bm&&Array.isArray(bloqueios)){
       const active=bloqueios.filter(x=>['Bloqueado','Em manutenção','Testado'].includes(x.status)),noDate=active.filter(x=>!x.dataBloq).length,noResp=active.filter(x=>!cleanText(x.responsavel)).length;
       bm.textContent=`${active.length} TAGs ativas · ${noDate} sem data · ${noResp} sem responsável`;
@@ -8972,5 +9000,5 @@ setInterval(function(){ try{ updateHeaderTimestamp(); }catch(e){} }, 30000);
   body:not(.ka-dashboard-pdf) .report-section:last-child{break-inside:avoid!important;page-break-inside:avoid!important}
 }
 </style>
-<script type="module" src="/shared-sync.js?v=20260902-plan-sync-1"></script>
+<script type="module" src="/shared-sync.js?v=20260903-curve-sync-1"></script>
 </body></html>
