@@ -12,11 +12,13 @@ const shellPath = path.join(root, "work", "offline-shell.js");
 const outputDir = path.join(root, "firebase", "public");
 const outputPath = path.join(outputDir, "index.html");
 
-const [source, syncScript, pageSource, shellSource] = await Promise.all([
+const [source, syncScript, pageSource, shellSource, professionalCss, professionalUi] = await Promise.all([
   readFile(sourcePath, "utf8"),
   readFile(syncPath, "utf8"),
   readFile(pagePath, "utf8"),
   readFile(shellPath, "utf8"),
+  readFile(path.join(root, "public", "professional-ui.css"), "utf8"),
+  readFile(path.join(root, "public", "professional-ui.js"), "utf8"),
 ]);
 
 const embeddedMatch = source.match(
@@ -71,6 +73,10 @@ if (!html.includes('id="ka-firebase-shell"')) {
     `<script id="ka-firebase-shell">${onlineShell.replaceAll("</script>", "<\\/script>")}</script>\n</body>`,
   );
 }
+
+// Visual update only: preserve all operational source, data and Firebase modules.
+if (/KA_PREVIEW_ONLY|KA_DEMO_DATA|ka-preview-only-runtime/.test(professionalUi)) throw new Error("Runtime de demonstração não pode ser publicado.");
+html = html.replace("</body>", '<style id="ka-professional-style">' + professionalCss + '</style>\n<script id="ka-professional-ui">' + professionalUi.replaceAll('</script>', '<\\/script>') + '</script>\n</body>');
 
 await mkdir(outputDir, { recursive: true });
 await Promise.all([
