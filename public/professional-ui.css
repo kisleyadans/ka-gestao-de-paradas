@@ -1,0 +1,237 @@
+/* Layout only: operational calculations and access rules stay in the application. */
+html:has(body.ka-pro){background:#f4f6f8}
+body.ka-pro{--ka-sidebar:224px;--ka-ink:#172b27;--ka-muted:#687b76;--ka-border:#e0e8e4;--ka-green:#137653;font-family:Inter,'Segoe UI',Arial,sans-serif!important;font-size:13px;color:var(--ka-ink);background:#f4f6f8!important}
+body.ka-pro *{box-sizing:border-box}
+body.ka-pro :is(button,input,select,textarea){font-family:inherit}
+body.ka-pro button{font-weight:650!important;letter-spacing:0!important;text-transform:none!important;box-shadow:none!important;border-radius:8px!important;transition:background .15s ease,border-color .15s ease}
+body.ka-pro :is(button,a,summary):focus-visible{outline:3px solid #61b893!important;outline-offset:3px}
+body.ka-pro :is(input,select,textarea):focus{outline:2px solid #5ba98c!important;outline-offset:1px}
+body.ka-pro input:not([type=range]):not([type=checkbox]),body.ka-pro select,body.ka-pro textarea{border:1px solid #d4dfd9!important;border-radius:8px!important;background:#fff!important;color:#243d33;font-size:13px!important;min-height:40px;padding:9px 11px!important;box-shadow:none!important}
+body.ka-pro input[type=checkbox],body.ka-pro input[type=range]{accent-color:var(--ka-green)}
+body.ka-pro label{font-weight:600!important;text-transform:none!important;letter-spacing:0!important;font-size:12px!important;color:#556961!important}
+body.ka-pro>header{width:224px!important;background:#122f27!important;padding:30px 20px!important;box-shadow:none!important;border-right:1px solid #17382f!important}
+body.ka-pro>header:after{display:none!important}
+body.ka-pro>header>div:first-child{padding:0 5px 22px!important;border-bottom:1px solid #ffffff16!important}
+body.ka-pro>header h1{font-size:29px!important;letter-spacing:-1px!important;font-weight:800!important}
+body.ka-pro .ka-brand-subtitle{font-size:11px!important;letter-spacing:.025em!important;color:#b9d7c9!important;font-weight:500!important;margin-top:9px}
+body.ka-pro .header-credit,body.ka-pro #lastUpdateStamp{display:none!important}
+body.ka-pro .tabs{width:224px!important;top:125px!important;bottom:92px!important;padding:12px!important;gap:4px!important}
+body.ka-pro .ka-nav-title{font-size:9px!important;color:#89a69a!important;letter-spacing:.1em!important;padding:9px 13px 13px!important}
+body.ka-pro .tabs .tab{min-height:44px!important;border:0!important;border-radius:8px!important;padding:11px 12px!important;color:#b6ccc1!important;gap:11px!important;background:transparent!important}
+body.ka-pro .tabs .tab:hover{background:#ffffff0c!important;color:#fff!important}
+body.ka-pro .tabs .tab.active{background:#ffffff14!important;color:#fff!important;box-shadow:inset 3px 0 #6bd3a2!important}
+body.ka-pro .ka-nav-icon{border:0!important;background:none!important;height:21px!important;width:21px!important;flex:0 0 21px!important;color:inherit!important}
+body.ka-pro .ka-nav-label{font-weight:550!important;font-size:13px!important;white-space:normal;line-height:1.35}
+.ka-pro-icon{display:inline-block;width:20px;height:20px;vertical-align:middle;flex-shrink:0}
+body.ka-pro .ka-sidebar-footer{padding:19px 23px!important;border-top:1px solid #ffffff14!important}
+body.ka-pro .ka-sidebar-footer strong{font-size:11px!important;font-weight:600}
+body.ka-pro .ka-sidebar-footer small{font-size:10px!important;margin-top:5px}
+body.ka-pro .ka-menu-toggle{background:#fff!important;color:#173e2e!important;border:1px solid #dce5df!important;width:32px!important;height:32px!important;left:208px!important;top:27px!important;box-shadow:0 2px 6px #162b2010!important}
+body.ka-pro .ka-menu-toggle span{background:#345747!important;width:14px!important}
+body.ka-pro.ka-sidebar-collapsed .ka-menu-toggle{left:12px!important}
+body.ka-pro>.wrap{padding:0 30px 44px!important;margin-left:224px!important;max-width:none!important}
+body.ka-pro.ka-sidebar-collapsed>.wrap{margin-left:0!important;padding-left:58px!important}
+.ka-pro-topbar{min-height:82px;display:flex;justify-content:space-between;align-items:center;gap:18px;border-bottom:1px solid #e1e7e3;margin-bottom:23px}
+.ka-pro-breadcrumb{font-size:10px;color:#7b8d84;display:flex;align-items:center;gap:9px;margin-bottom:6px}
+.ka-pro-page-title{font-size:22px;font-weight:750;letter-spacing:-.55px;line-height:1.2;margin:0;color:#183b2d}
+.ka-pro-top-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+body.ka-pro #pcmAdminBar{padding:0!important;margin:0!important;border:0!important;background:none!important;gap:8px!important;border-radius:0!important;min-height:0!important}
+body.ka-pro #pcmAdminBar::before,body.ka-pro #pcmAdminState{display:none!important}
+body.ka-pro #pcmDashboardPdfBtn,body.ka-pro #kaProPrint[hidden]{display:none!important}
+body.ka-pro #pcmAdminBar button{min-height:36px!important;padding:8px 12px!important;border:1px solid #d7e2dc!important;font-size:11px!important;background:#fff!important;color:#335546!important}
+body.ka-pro #pcmAdminBtn{background:#176b4c!important;border-color:#176b4c!important;color:#fff!important}
+body.ka-pro .ka-shared-status{font-size:10px!important;max-width:270px;border:0!important;background:none!important;padding:4px!important}
+body.ka-pro .ka-shared-status.error{background:#fff0ed!important;color:#a43d28!important;max-width:330px}
+.ka-pro-print{display:flex;gap:7px;align-items:center;background:#fff;border:1px solid #d7e2dc;color:#365547;min-height:36px;padding:8px 12px;font-size:11px}
+.ka-pro-preview-banner{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:0 0 18px;padding:11px 15px;border:1px solid #cddfd7;border-radius:10px;background:#e9f3ee;color:#315d49;font-size:11px}
+.ka-pro-preview-banner strong{font-size:11px;font-weight:750}.ka-pro-preview-banner>span{flex:1;min-width:200px}.ka-pro-preview-banner button{padding:6px 9px;background:#fff;border:1px solid #c7dace;color:#29513d;font-size:10px;min-height:32px}
+body.ka-pro:has(.ka-pro-preview-banner) #pcmAdminBar button{display:none!important}
+body.ka-pro #kaV2ProjectBar{padding:10px 14px!important;border:1px solid var(--ka-border)!important;border-radius:10px!important;background:#fff!important;box-shadow:none!important;margin:0 0 14px!important}
+body.ka-pro #kaV2ProjectBar select{min-height:32px!important;padding:5px 10px!important;font-size:12px!important}
+body.ka-pro :is(.card,.control-card,.meeting-card){border:1px solid var(--ka-border)!important;border-radius:12px!important;box-shadow:0 2px 4px #173d2503!important;background:#fff!important}
+body.ka-pro .section-title{padding:14px 17px!important;margin:0!important;border-bottom:1px solid #edf0ee;gap:12px;align-items:center!important}
+body.ka-pro .section-title h2{font-size:15px!important;font-weight:700!important;color:#244536!important;letter-spacing:-.2px}
+body.ka-pro .section-title h2::before{display:none!important}
+body.ka-pro .toolbar{border:0!important;box-shadow:none!important;background:none!important;padding:10px 0!important;flex-wrap:wrap}
+body.ka-pro #kaProTools[open] .toolbar{display:flex!important}
+body.ka-pro .toolbar button{padding:8px 12px!important;min-height:34px!important;font-size:11px!important;border:1px solid #dce6df!important;color:#385a48!important;background:#fff!important}
+body.ka-pro .toolbar .danger{color:#a63629!important;border-color:#ebc6bd!important}
+body.ka-pro #saveInfo{font-size:10px!important;color:#7c8c83!important}
+.ka-pro-tools{margin:0 0 14px;background:none}.ka-pro-tools>summary{width:max-content;cursor:pointer;list-style:none;font-size:11px;font-weight:600;color:#5b7062;display:flex;gap:7px;align-items:center;padding:4px 0}.ka-pro-tools>summary::after{content:'⌄';font-size:15px;margin-left:8px}.ka-pro-tools[open]>summary::after{content:'⌃'}
+body.ka-pro #filtersCard{margin:0 0 18px!important;padding:0!important;border:1px solid var(--ka-border)!important;background:#fff!important}
+body.ka-pro #filtersCard .section-title{padding:13px 16px!important}
+body.ka-pro #filtersCard .section-title h2{font-size:12px!important;font-weight:650!important}
+body.ka-pro #filtersCard .filter-grid{display:grid!important;grid-template-columns:1.3fr 1.3fr 1fr 1.6fr 1fr!important;padding:13px 16px 16px!important;gap:12px!important;align-items:end!important}
+body.ka-pro #filtersCard .filter-grid>div{width:auto!important;min-width:0!important;grid-column:auto!important;grid-row:auto!important}
+body.ka-pro #filtersCard .filter-grid .ka-filter-field{display:block!important;order:0!important;min-height:0!important;background:none!important;box-shadow:none!important;border:0!important;padding:0!important;border-radius:0!important}
+body.ka-pro #filtersCard .filter-grid label{font-size:12px!important;margin-bottom:7px!important;color:#52675d!important}
+body.ka-pro #filtersCard .filter-grid label::before{display:none!important}
+body.ka-pro #filtersCard .filter-grid :is(input,select){width:100%!important;font-size:13px!important;font-weight:450!important;min-height:42px!important;max-width:none!important;background:#fff!important;padding:9px 12px!important}
+body.ka-pro #filtersCard .filters.filter-grid .ka-filter-field :is(input,select){border:1px solid #d4dfd9!important;border-radius:8px!important;background-color:#fff!important;box-shadow:none!important}
+body.ka-pro #filtersCard .filters.filter-grid .ka-filter-field select{appearance:auto!important;background-image:none!important}
+body.ka-pro #filtersCard .filters.filter-grid .ka-filter-reference{display:flex!important;grid-column:1/4!important;align-items:center!important;border-top:1px solid #edf0ee!important;padding-top:10px!important;gap:12px!important}
+body.ka-pro #filtersCard .filters.filter-grid .ka-filter-reference input{width:230px!important;min-height:35px!important}
+body.ka-pro #filtersCard .filters.filter-grid .ka-filter-actions{grid-column:4/6!important;padding-top:10px!important;border-top:1px solid #edf0ee!important}
+body.ka-pro #filtersCard .ka-filter-reference{grid-column:1 / 4!important;display:flex;gap:10px;align-items:center;border-top:1px solid #edf0ee;padding-top:11px}
+body.ka-pro #filtersCard .ka-filter-reference label{margin:0!important;white-space:nowrap;color:#7e8d84!important}
+body.ka-pro #filtersCard .ka-filter-reference input{max-width:240px;min-height:33px!important;font-size:11px!important;padding:6px!important}
+body.ka-pro #filtersCard .ka-filter-actions{grid-column:4 / 6!important;border-top:1px solid #edf0ee;padding-top:11px;justify-content:flex-end}
+body.ka-pro #filtersCard .ka-filter-actions button{min-height:33px!important;padding:7px 12px!important;font-size:11px!important}
+body.ka-pro #filtersCard .small-muted{font-size:10px!important}
+body.ka-pro #view-dashboard{background:none!important;border:0!important;box-shadow:none!important;padding:0!important}
+body.ka-pro #view-dashboard .cc-dashboard{gap:18px!important}
+body.ka-pro #view-dashboard .cc-command-header{padding:0 0 2px!important;background:none!important;box-shadow:none!important;border:0!important;border-radius:0!important;display:flex;align-items:center}
+body.ka-pro #view-dashboard .cc-command-header::before,body.ka-pro #view-dashboard .cc-command-header::after{display:none!important}
+body.ka-pro #view-dashboard .cc-eyebrow{font-size:10px!important;letter-spacing:.035em!important;color:#6b8175!important;text-transform:none}
+body.ka-pro #view-dashboard .cc-command-title h2{background:none!important;-webkit-text-fill-color:#193e2d!important;color:#193e2d!important;font-size:25px!important;letter-spacing:-.7px!important;text-shadow:none!important;margin:7px 0 6px!important;font-weight:750!important}
+body.ka-pro #view-dashboard .cc-command-title p{font-size:11px!important;color:#7b8c82!important}
+body.ka-pro #view-dashboard .cc-command-time{padding:0 0 0 20px!important;border-left:1px solid #dfe6e1!important;color:#4c6557!important}
+body.ka-pro #view-dashboard .cc-command-time strong{-webkit-text-fill-color:#375849!important;background:none!important;font-size:17px!important;font-weight:650}
+body.ka-pro #view-dashboard .cc-command-time :is(span,small){color:#7d8d83!important;font-size:10px!important}
+body.ka-pro #view-dashboard .cc-kpi-grid{display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:12px!important;margin:0!important}
+body.ka-pro #view-dashboard .cc-kpi-grid .control-kpi{background:#fff!important;border:1px solid var(--ka-border)!important;border-radius:11px!important;padding:17px 18px!important;box-shadow:none!important;transform:none!important}
+body.ka-pro #view-dashboard .cc-kpi-grid .control-kpi::after{display:none!important}
+body.ka-pro #view-dashboard .cc-kpi-grid .kpi-lbl{font-size:10px!important;color:#6f8277!important;font-weight:600!important;letter-spacing:0!important;text-transform:none}
+body.ka-pro #view-dashboard .cc-kpi-grid .kpi-val{font-size:30px!important;line-height:1.2!important;font-weight:720!important;letter-spacing:-.8px!important;color:#173e2c!important;text-shadow:none!important;margin:8px 0!important}
+body.ka-pro #view-dashboard .cc-kpi-grid .bad .kpi-val{color:#b7543d!important}
+body.ka-pro #view-dashboard .cc-kpi-grid .warn .kpi-val{color:#9d7419!important}
+body.ka-pro #view-dashboard .cc-kpi-grid .control-kpi.good .kpi-val{color:#14774e!important}
+body.ka-pro #view-dashboard .cc-kpi-grid .control-kpi.blue .kpi-val{color:#42637e!important}
+body.ka-pro #view-dashboard .cc-kpi-grid .control-kpi.warn .kpi-val{color:#987119!important}
+body.ka-pro #view-dashboard .cc-kpi-grid .control-kpi.bad .kpi-val{color:#b34c3a!important}
+body.ka-pro #view-dashboard .cc-kpi-grid .kpi-note{font-size:10px!important;color:#8a988f!important;font-weight:400!important;line-height:1.45}
+body.ka-pro #view-dashboard .cc-hero-grid{display:grid!important;grid-template-columns:1.35fr .8fr 1.1fr!important;gap:12px!important}
+body.ka-pro #view-dashboard .cc-hero-card{padding:16px 18px!important;background:#fff!important;border:1px solid var(--ka-border)!important;border-radius:11px!important;box-shadow:none!important;transform:none!important}
+body.ka-pro #view-dashboard .cc-hero-card::after{display:none!important}
+body.ka-pro #view-dashboard .cc-card-kicker{font-size:10px!important;letter-spacing:0!important;color:#708274!important;text-transform:none}
+body.ka-pro #view-dashboard .cc-card-kicker::before{display:none!important}
+body.ka-pro #view-dashboard .control-status{background:none!important;padding:8px 0!important;gap:8px!important;font-size:17px!important}
+body.ka-pro #view-dashboard .status-icon{font-size:17px!important}
+body.ka-pro #view-dashboard .status-meta{font-size:10px!important;line-height:1.5!important;color:#7c8d83!important;font-weight:450!important}
+body.ka-pro #view-dashboard .cc-projection-summary{gap:6px!important;margin-top:9px!important}
+body.ka-pro #view-dashboard .cc-proj-chip{background:#f6f8f6!important;border:0!important;border-radius:7px!important;padding:9px!important;box-shadow:none!important;transform:none!important}
+body.ka-pro #view-dashboard .cc-proj-chip.bad{background:#fcf2ef!important}
+body.ka-pro #view-dashboard .cc-proj-chip span{font-size:8px!important;color:#809087!important;font-weight:500!important}
+body.ka-pro #view-dashboard .cc-proj-chip strong{font-size:12px!important}
+body.ka-pro #view-dashboard .cc-progress-hero{flex-direction:row!important;display:flex!important;align-items:center!important;gap:16px!important;justify-content:center!important}
+body.ka-pro #view-dashboard .dash-progress-ring{width:98px!important;height:98px!important;min-width:98px!important;filter:none!important;box-shadow:none!important}
+body.ka-pro #view-dashboard .ring-center strong{background:none!important;-webkit-text-fill-color:#284d36!important;font-size:25px!important}
+body.ka-pro #view-dashboard .ring-center span{font-size:8px!important}
+body.ka-pro #view-dashboard .dash-ring-caption{text-align:left!important;max-width:150px}
+body.ka-pro #view-dashboard .dash-ring-caption strong{font-size:12px!important}
+body.ka-pro #view-dashboard .dash-ring-caption span{font-size:10px!important;line-height:1.6}
+body.ka-pro #view-dashboard .cc-shift-headline{font-size:11px!important;line-height:1.6!important;color:#566f5e!important}
+body.ka-pro #view-dashboard .cc-shift-metrics{grid-template-columns:repeat(4,1fr)!important;gap:6px!important}
+body.ka-pro #view-dashboard .cc-shift-metric{padding:7px 3px!important;border:0!important;background:#f6f8f6!important;border-radius:7px!important;box-shadow:none!important;transform:none!important}
+body.ka-pro #view-dashboard .cc-shift-metric b{font-size:18px!important}body.ka-pro #view-dashboard .cc-shift-metric span{font-size:8px!important}
+body.ka-pro #view-dashboard .cc-operational-ribbon{background:#edf3ef!important;border:1px solid #d9e6dc!important;box-shadow:none!important;border-radius:10px!important;padding:10px!important}
+body.ka-pro #view-dashboard .op-item{border-right:1px solid #d6e3d9!important}
+body.ka-pro #view-dashboard .op-lbl{color:#6b7f70!important;font-size:9px!important}body.ka-pro #view-dashboard .op-val{font-size:18px!important;color:#29553a!important;text-shadow:none!important}body.ka-pro #view-dashboard .op-sub{font-size:9px!important;color:#7e8f82!important}
+body.ka-pro #view-dashboard .cc-section-heading{margin:7px 0 -5px!important;padding:0!important}
+body.ka-pro #view-dashboard .cc-section-heading>div{display:flex!important;align-items:baseline!important;gap:0!important;flex-wrap:wrap!important;width:auto!important;grid-template-columns:none!important}
+body.ka-pro #view-dashboard .cc-section-heading strong{flex:0 0 auto!important;width:auto!important;white-space:nowrap!important}
+body.ka-pro #view-dashboard .cc-section-heading>div>span{display:none!important}
+body.ka-pro #view-dashboard .cc-section-heading strong{font-size:15px!important;font-weight:650!important;letter-spacing:-.2px!important;color:#345a43!important}
+body.ka-pro #view-dashboard .cc-section-heading strong::after{display:none!important}
+body.ka-pro #view-dashboard .cc-section-heading small{font-size:10px!important;color:#819184!important;margin-left:12px}
+body.ka-pro #view-dashboard .cc-performance-grid{grid-template-columns:minmax(0,1.8fr) minmax(280px,1fr)!important;gap:16px!important}
+body.ka-pro #view-dashboard .control-card.cc-card{padding:17px 18px!important;border:1px solid var(--ka-border)!important;background:#fff!important;border-radius:12px!important;box-shadow:none!important;transform:none!important}
+body.ka-pro #view-dashboard .control-card-header{padding-bottom:12px!important;margin-bottom:12px!important;border-bottom:1px solid #edf1ed!important;gap:8px;flex-wrap:wrap}
+body.ka-pro #view-dashboard .control-card-header h3{font-size:12px!important;font-weight:650!important;color:#335440!important;letter-spacing:0!important;text-transform:none!important}
+body.ka-pro #view-dashboard .control-card-header>span{font-size:9px!important;color:#809083!important}
+body.ka-pro #view-dashboard #controlHeatmap{min-height:220px!important}
+body.ka-pro #view-dashboard .cc-control-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+body.ka-pro #view-dashboard .ctrl-item{background:#fcf8f6!important;box-shadow:none!important;border:1px solid #eee1da!important;border-radius:8px!important}
+body.ka-pro #view-dashboard .ctrl-item strong{font-size:11px!important}
+body.ka-pro #view-dashboard .ctrl-desc{font-size:11px!important;font-weight:500!important;line-height:1.55!important}
+body.ka-pro #view-dashboard .disc-farol-grid{grid-template-columns:repeat(auto-fill,minmax(220px,1fr))!important;gap:12px!important}
+body.ka-pro #view-dashboard .disc-farol-card{box-shadow:none!important;border-radius:10px!important}
+body.ka-pro #view-dashboard .disc-farol-header{align-items:flex-start!important;gap:10px!important;min-height:42px}
+body.ka-pro #view-dashboard .disc-farol-header strong{font-size:11px!important;white-space:normal!important;overflow:visible!important;text-overflow:clip!important;line-height:1.4!important;letter-spacing:0!important}
+body.ka-pro #view-dashboard .disc-farol-badge{font-size:8px!important}
+body.ka-pro #view-dashboard .mgmt-area-grid{gap:14px!important;grid-template-columns:repeat(auto-fit,minmax(300px,1fr))!important}
+body.ka-pro #view-atividades .card{padding:0!important;overflow:hidden}
+body.ka-pro #activityTable{width:100%!important;min-width:1280px!important;table-layout:fixed!important;border-collapse:collapse!important;font-size:12px!important}
+body.ka-pro #activityTable th{background:#f6f8f6!important;color:#6b7e6f!important;font-size:10px!important;font-weight:650!important;text-transform:none!important;letter-spacing:0!important;border-bottom:1px solid #e2e9e2!important;padding:14px 12px!important;position:sticky;top:0;z-index:2}
+body.ka-pro #activityTable td{padding:13px 12px!important;border-bottom:1px solid #edf1ed!important;vertical-align:middle!important;font-size:12px!important;color:#455f4d}
+body.ka-pro #activityTable tr:hover td{background:#f5f9f6!important}
+body.ka-pro #activityTable :is(.activity-cell,.activity-desc,.ka-activity-desc){white-space:normal!important;overflow:visible!important;text-overflow:clip!important;-webkit-line-clamp:unset!important;display:block!important;line-height:1.55!important}
+body.ka-pro #view-atividades #activityTable .activity-desc-compact{display:block!important;max-height:none!important;-webkit-line-clamp:unset!important;overflow:visible!important;white-space:normal!important;font-weight:600!important;font-size:13px!important;line-height:1.6!important}
+body.ka-pro #view-atividades #activityTable :is(td,th){font-size:12px!important;padding:13px 11px!important}
+body.ka-pro:not(.ka-activity-table-expanded) #view-atividades #activityTable{min-width:1040px!important}
+body.ka-pro:not(.ka-activity-table-expanded) #view-atividades #activityTable :is(td,th):nth-child(n+8):not(:last-child){display:none!important}
+body.ka-pro:not(.ka-activity-table-expanded) #view-atividades #activityTable :is(td,th):nth-child(1){width:65px!important}
+body.ka-pro:not(.ka-activity-table-expanded) #view-atividades #activityTable :is(td,th):nth-child(2){width:110px!important}
+body.ka-pro:not(.ka-activity-table-expanded) #view-atividades #activityTable :is(td,th):nth-child(3){width:145px!important}
+body.ka-pro:not(.ka-activity-table-expanded) #view-atividades #activityTable :is(td,th):nth-child(5){width:143px!important}
+body.ka-pro:not(.ka-activity-table-expanded) #view-atividades #activityTable :is(td,th):nth-child(6){width:120px!important}
+body.ka-pro:not(.ka-activity-table-expanded) #view-atividades #activityTable :is(td,th):nth-child(7){width:auto!important;min-width:230px!important}
+body.ka-pro:not(.ka-activity-table-expanded) #view-atividades #activityTable :is(td,th):last-child{width:100px!important}
+body.ka-pro #activityTable :is(th,td):nth-child(1){width:70px!important}
+body.ka-pro #activityTable :is(th,td):nth-child(2){width:106px!important}
+body.ka-pro #activityTable :is(th,td):nth-child(3){width:150px!important}
+body.ka-pro #activityTable :is(th,td):nth-child(4){width:78px!important}
+body.ka-pro #activityTable td:nth-child(4) input{width:60px!important;min-width:60px!important;padding:7px!important;font-size:13px!important}
+body.ka-pro #activityTable :is(th,td):nth-child(5){width:150px!important}
+body.ka-pro #activityTable :is(th,td):nth-child(6){width:132px!important}
+body.ka-pro #activityTable :is(th,td):nth-child(7){width:320px!important}
+body.ka-pro #activityTable :is(th,td):nth-child(8),body.ka-pro #activityTable :is(th,td):nth-child(9){width:188px!important}
+body.ka-pro #activityTable :is(th,td):nth-child(n+10){width:125px!important}
+body.ka-pro #activityTable :is(input,select){font-size:11px!important;min-height:32px!important;padding:5px 7px!important;width:100%;max-width:100%}
+body.ka-pro #activityTable .om-cell:empty::before{content:''!important}
+body.ka-pro .table-wrap{scrollbar-color:#b7cbc0 #f5f8f6;scrollbar-width:thin}
+.ka-pro-table-help{padding:11px 17px;color:#7a8c7f;font-size:10px;border-top:1px solid #edf1ed;display:flex;gap:12px;align-items:center;justify-content:space-between}
+body.ka-pro #view-avanco .avanco-user-bar{background:#fff!important;padding:17px!important}
+body.ka-pro .avanco-user-avatar{background:#eff6f1!important;border:0!important;border-radius:10px!important;width:40px!important;height:40px!important;font-size:20px!important}
+body.ka-pro .avanco-user-nome{font-size:15px!important;font-weight:700!important;color:#31553d!important}
+body.ka-pro .avanco-user-stats .stat{border:0!important;background:#f5f8f5!important;min-width:70px!important;padding:9px 12px!important}
+body.ka-pro .avanco-user-stats .stat span{font-size:8px!important;text-transform:none!important;font-weight:500!important}
+body.ka-pro .ka-pro-av-filters{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:13px!important;padding:1px 0 18px;margin-bottom:16px!important;border-bottom:1px solid #e4ebe5}
+body.ka-pro .ka-pro-av-filters>div{min-width:0!important;width:auto!important;flex:unset!important}
+body.ka-pro .ka-pro-av-filters :is(input,select){width:100%!important;max-width:none!important}
+body.ka-pro .ka-pro-av-filters>div:first-child{grid-column:span 2}
+body.ka-pro #avMeta{font-size:11px!important;align-self:end;padding-bottom:9px}
+body.ka-pro .avanco-lista{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px!important}
+body.ka-pro .avanco-item{display:flex!important;flex-direction:column!important;gap:10px!important;padding:19px!important;background:#fff!important;border:1px solid #dfe8e1!important;border-radius:12px!important;box-shadow:none!important;position:relative;min-width:0}
+body.ka-pro .avanco-item.st-atrasada{border-top:3px solid #d08a70!important}
+body.ka-pro .avanco-item.st-em-andamento{border-top:3px solid #5c98ad!important}
+body.ka-pro .avanco-item.st-concluida{border-top:3px solid #6aae86!important}
+body.ka-pro .avanco-item-tit{font-size:14px!important;font-weight:650!important;line-height:1.6!important;min-height:44px!important;color:#284533!important;white-space:normal!important;overflow:visible!important}
+body.ka-pro .avanco-item-tags{gap:5px!important;margin-bottom:9px!important}
+body.ka-pro .avanco-item-tag{font-size:8px!important;text-transform:none!important;letter-spacing:0!important;background:#f0f5f1!important;border-radius:5px!important;padding:4px 7px!important;font-weight:550!important}
+body.ka-pro .avanco-item-meta{font-size:10px!important;line-height:1.7!important;gap:4px 10px!important}
+body.ka-pro .avanco-item-actions{display:flex!important;flex-direction:row!important;width:100%;justify-content:stretch!important;gap:8px!important;margin-top:auto!important;padding-top:5px}
+body.ka-pro .avanco-item-actions button{flex:1;min-height:40px;font-size:11px!important;border-radius:8px!important;font-weight:650!important}
+body.ka-pro .avanco-item-actions .btn-save{background:#166f4f!important}
+body.ka-pro .avanco-item-actions .btn-100{background:#f0f6f1!important;color:#316849!important;border:1px solid #cfe1d5!important}
+body.ka-pro .avanco-item-actions .btn-save.dirty{background:#9c7116!important;animation:none!important}
+body.ka-pro .avanco-item-obs{min-height:52px!important;line-height:1.5!important}
+body.ka-pro .avanco-item-progresso{flex-wrap:wrap!important}
+body.ka-pro .avanco-item-input{max-width:75px!important}
+body.ka-pro .avanco-item-status{max-width:170px!important}
+body.ka-pro .avanco-item-inicio-real{background:#f7f9f7!important;border:0!important;gap:8px!important;padding:9px!important}
+body.ka-pro .avanco-item-inicio-real input{min-height:31px!important;font-size:10px!important;padding:5px!important;max-width:178px}
+body.ka-pro .avanco-item-inicio-real label{font-size:9px!important}
+body.ka-pro .avanco-item-inicio-real button{font-size:9px!important;min-height:31px!important;background:#fff!important;border:1px solid #d6e2d8!important;color:#527259!important}
+body.ka-pro .meeting-hero{background:#edf4ef!important;color:#234b33!important;border:1px solid #d7e5dc;border-radius:12px!important;padding:23px!important;box-shadow:none!important}
+body.ka-pro .meeting-hero h2{font-size:21px!important;color:#254c35!important;letter-spacing:-.5px!important}body.ka-pro .meeting-hero p{color:#78907c!important;font-size:12px!important}
+body.ka-pro .meeting-hero label{color:#526f58!important}
+body.ka-pro #planTable td{padding:12px!important;vertical-align:top!important}
+body.ka-pro #planTable th{font-size:11px!important;text-transform:none!important;padding:12px!important;background:#f1f6f2!important}
+body.ka-pro #planTable textarea{min-height:82px!important;line-height:1.6!important}
+body.ka-pro .save-toast:empty,body.ka-pro .autosave-chip{display:none!important}
+body.ka-pro .ka-pro-health{padding:14px 17px;margin-top:20px;border:1px solid #dce6de;border-radius:10px;background:#fff;font-size:11px;color:#64816a}
+body.ka-pro .ka-pro-health summary{font-weight:600;color:#44694e;cursor:pointer;min-height:25px}
+body.ka-pro .ka-pro-health p{line-height:1.65}
+body.ka-pro .ka-pro-health button{padding:8px 12px;margin:5px 7px 5px 0;background:#f2f7f3;border:1px solid #d5e4d9;color:#396045;font-size:11px}
+.ka-recovery-row{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;border-top:1px solid #e2e9e4;padding:6px 0}
+@media(max-width:920px){body.ka-pro #filtersCard .filters.filter-grid .ka-filter-reference{grid-column:1/3!important}body.ka-pro #filtersCard .filters.filter-grid .ka-filter-actions{grid-column:3/4!important}}
+@media(max-width:650px){body.ka-pro #filtersCard .filters.filter-grid .ka-filter-reference,body.ka-pro #filtersCard .filters.filter-grid .ka-filter-actions{grid-column:1/-1!important;flex-wrap:wrap}body.ka-pro:not(.ka-activity-table-expanded) #view-atividades #activityTable{min-width:0!important}body.ka-pro:not(.ka-activity-table-expanded) #view-atividades #activityTable :is(td,th){width:auto!important;min-width:0!important}}
+@media(min-width:1500px){body.ka-pro>.wrap{padding-left:38px!important;padding-right:38px!important}.ka-pro-topbar{margin-bottom:28px}body.ka-pro #view-dashboard .cc-dashboard{gap:20px!important}}
+@media(max-width:1200px){body.ka-pro #view-dashboard .cc-hero-grid{grid-template-columns:1.25fr 1fr!important}body.ka-pro #view-dashboard .cc-shift-hero{grid-column:1/-1!important;display:flex!important;align-items:center;gap:20px}body.ka-pro #view-dashboard .cc-shift-metrics{flex:1}.ka-pro-top-actions .ka-pro-print{display:none}body.ka-pro #view-dashboard .cc-kpi-grid .control-kpi{padding:13px!important}body.ka-pro #view-dashboard .cc-kpi-grid .kpi-val{font-size:25px!important}}
+@media(max-width:1000px){body.ka-pro .avanco-lista{grid-template-columns:1fr}body.ka-pro #view-dashboard .cc-performance-grid{grid-template-columns:1fr!important}body.ka-pro .ka-pro-av-filters{grid-template-columns:repeat(3,minmax(0,1fr))!important}.ka-pro-top-actions .ka-shared-status{max-width:160px}body.ka-pro #view-dashboard .cc-control-grid{grid-template-columns:1fr!important}}
+@media(max-width:920px){body.ka-pro>header,body.ka-pro .tabs{width:248px!important}body.ka-pro .tabs{top:125px!important;z-index:1103!important}body.ka-pro>header{z-index:1102!important}body.ka-pro>.wrap,body.ka-pro.ka-sidebar-collapsed>.wrap{margin-left:0!important;padding:65px 16px 28px!important}body.ka-pro .ka-menu-toggle{left:14px!important;top:13px!important}body.ka-pro.ka-menu-open .ka-menu-toggle{left:209px!important}body.ka-pro .ka-mobile-title{height:57px!important;background:#fff!important;padding-left:63px!important}body.ka-pro .ka-mobile-title strong{font-size:16px!important}.ka-pro-topbar{min-height:69px;margin-bottom:16px}.ka-pro-page-title{font-size:20px}.ka-pro-breadcrumb{display:none}.ka-pro-top-actions{gap:5px}body.ka-pro #pcmAdminBar button{font-size:10px!important;padding:7px 9px!important}body.ka-pro #kaSharedRefresh{display:none!important}body.ka-pro #filtersCard .filter-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important}body.ka-pro #filtersCard .ka-filter-reference{grid-column:1/3!important}body.ka-pro #filtersCard .ka-filter-actions{grid-column:3/4!important}body.ka-pro #view-dashboard .cc-kpi-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important}body.ka-pro #view-dashboard .cc-command-title h2{font-size:22px!important}body.ka-pro #view-dashboard .cc-section-heading small{display:none}}
+@media(max-width:650px){body.ka-pro>.wrap{padding:65px 12px 25px!important}.ka-pro-topbar{align-items:flex-start;padding:8px 0 12px;min-height:70px}.ka-pro-page-title{font-size:18px;padding-top:6px}.ka-pro-top-actions .ka-shared-status{display:none!important}.ka-pro-preview-banner{gap:8px;padding:10px 12px}.ka-pro-preview-banner>span{min-width:100%;font-size:10px}.ka-pro-preview-banner button{font-size:10px}body.ka-pro #kaV2ProjectBar{flex-wrap:wrap;gap:6px}body.ka-pro #kaV2ProjectSource,body.ka-pro #kaV2Role{display:none!important}body.ka-pro #filtersCard .filter-grid{grid-template-columns:1fr 1fr!important;padding:12px!important;gap:10px!important}body.ka-pro #filtersCard .ka-filter-reference{grid-column:1/-1!important;flex-wrap:wrap}body.ka-pro #filtersCard .ka-filter-actions{grid-column:1/-1!important;border:0!important;padding-top:0!important;justify-content:flex-start}body.ka-pro #view-dashboard .cc-kpi-grid{grid-template-columns:1fr 1fr!important}body.ka-pro #view-dashboard .cc-kpi-grid .control-kpi:last-child{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;align-items:center}body.ka-pro #view-dashboard .cc-kpi-grid .control-kpi:last-child .kpi-val{grid-column:2;grid-row:1/3;text-align:right}body.ka-pro #view-dashboard .cc-hero-grid{grid-template-columns:1fr!important}body.ka-pro #view-dashboard .cc-shift-hero{display:block!important}body.ka-pro #view-dashboard .cc-command-time{display:none!important}body.ka-pro #view-dashboard .cc-command-title h2{font-size:22px!important}body.ka-pro #view-dashboard .cc-management-grid,body.ka-pro #view-dashboard .cc-control-grid{grid-template-columns:1fr!important}body.ka-pro #view-dashboard .cc-operational-ribbon{display:grid!important;grid-template-columns:1fr 1fr!important;gap:10px!important}body.ka-pro #view-dashboard .op-item{min-width:0!important;border:0!important;padding:5px!important}body.ka-pro #view-dashboard .disc-farol-grid,body.ka-pro #view-dashboard .mgmt-area-grid{grid-template-columns:1fr!important}body.ka-pro .ka-pro-av-filters{grid-template-columns:1fr 1fr!important}body.ka-pro .ka-pro-av-filters>div:first-child{grid-column:1/-1}body.ka-pro .avanco-user-stats .stat{min-width:0!important;flex:1;padding:8px!important}body.ka-pro .avanco-user-stats{width:100%;gap:5px!important}body.ka-pro .avanco-item{padding:14px!important}body.ka-pro .avanco-item-inicio-real input{max-width:100%!important}body.ka-pro #activityTable{min-width:0!important;display:block!important}body.ka-pro #activityTable tbody{display:block!important}body.ka-pro #activityTable tr{border:1px solid var(--ka-border)!important;border-radius:10px!important;padding:13px!important;margin:10px!important;display:grid!important;grid-template-columns:1fr 1fr!important;gap:10px!important}body.ka-pro #activityTable td{padding:0!important;border:0!important;width:auto!important}body.ka-pro #activityTable td:nth-child(7){grid-column:1/-1!important;grid-row:2!important;display:block!important}body.ka-pro #activityTable td:nth-child(6){grid-column:1/-1!important}body.ka-pro #activityTable :is(th,thead){display:none!important}body.ka-pro #activityTable td:nth-child(n+8){grid-column:1/-1!important}body.ka-pro .ka-pro-table-help{display:none}body.ka-pro .avanco-login{margin:14px 0!important;padding:18px!important}body.ka-pro .meeting-hero{padding:18px!important}body.ka-pro .meeting-hero h2{font-size:19px!important}}
+@media(prefers-reduced-motion:reduce){body.ka-pro *,body.ka-pro *::before,body.ka-pro *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+@media print{html body.ka-pro.ka-app-layout>.wrap{margin-left:0!important;margin-right:0!important;padding-left:0!important;padding-right:0!important;width:100%!important;max-width:none!important;transition:none!important;animation:none!important}}
+@media print{body.ka-pro{background:#fff!important;font-size:10pt!important}.ka-pro-topbar,.ka-pro-preview-banner,.ka-pro-tools,.ka-pro-health,body.ka-pro>header,body.ka-pro .tabs,body.ka-pro .ka-menu-toggle,body.ka-pro .ka-mobile-title,body.ka-pro #kaV2ProjectBar{display:none!important}body.ka-pro>.wrap,body.ka-pro.ka-sidebar-collapsed>.wrap{margin:0!important;padding:0!important;width:100%!important}body.ka-pro .card,body.ka-pro .control-card{box-shadow:none!important;break-inside:avoid}body.ka-pro #view-dashboard .cc-hero-grid{grid-template-columns:1fr 1fr!important}body.ka-pro #view-dashboard .cc-kpi-grid{grid-template-columns:repeat(5,1fr)!important}body.ka-pro #view-dashboard .cc-performance-grid{grid-template-columns:1fr!important}body.ka-pro #view-dashboard .cc-command-time,body.ka-pro #view-dashboard .cc-details{display:block!important}body.ka-pro #activityTable{min-width:0!important;width:100%!important}body.ka-pro #activityTable :is(th,td){width:auto!important;font-size:8pt!important;padding:5px!important}body.ka-pro #view-report{width:100%!important;overflow:visible!important}}
