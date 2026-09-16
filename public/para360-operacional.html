@@ -4663,7 +4663,8 @@ function renderMgmtAreaSummary(list){
   const grid = document.getElementById('mgmtAreaSummaryGrid');
   const meta = document.getElementById('mgmtAreaMeta');
   if(!grid) return;
-  const areas = areaConfigsFromActivities(activities,true);
+  const selectedArea = normalizeAreaKey(document.getElementById('fArea')?.value || '');
+  const areas = areaConfigsFromActivities(activities,true).filter(cfg=>!selectedArea || cfg.key===selectedArea);
   const rows = areas.map(cfg=>{
     const areaList = list.filter(a=>normalizeAreaKey(a.area) === cfg.key);
     return {cfg, list: areaList, k: areaList.length ? calcKpis(areaList) : null};
