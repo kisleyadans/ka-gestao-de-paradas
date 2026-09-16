@@ -2586,7 +2586,9 @@ function renderReport(){
   const activeFilters = [];
   const f = id => document.getElementById(id)?.value?.trim();
   if(f('fDisciplina')) activeFilters.push('Disciplina: '+f('fDisciplina'));
+  if(f('fArea')) activeFilters.push('Área: '+f('fArea'));
   if(f('fEquipamento')) activeFilters.push('Equipamento: '+f('fEquipamento'));
+  if(f('fOM')) activeFilters.push('OM: '+f('fOM'));
   if(f('fStatus')) activeFilters.push('Status: '+f('fStatus'));
   const filterTxt = activeFilters.length ? activeFilters.join(' · ') : 'Sem filtros aplicados';
 
@@ -4186,7 +4188,8 @@ function renderAreaKpis(){
            (!st || es===st);
   });
 
-  const areas = areaConfigsFromActivities(activities,true);
+  const selectedArea = normalizeAreaKey(document.getElementById('fArea')?.value || '');
+  const areas = areaConfigsFromActivities(activities,true).filter(cfg=>!selectedArea || cfg.key===selectedArea);
 
   const data = areas.map(a => {
     const list = baseList.filter(x => normalizeAreaKey(x.area) === a.key);
@@ -8278,7 +8281,38 @@ setInterval(function(){ try{ updateHeaderTimestamp(); }catch(e){} }, 30000);
 })();
 </script>
 
-<style id="ka-dashboard-pdf-style">@media print{@page{size:A4 landscape;margin:8mm}body.ka-dashboard-pdf,body.ka-dashboard-pdf .wrap,body.ka-dashboard-pdf #view-dashboard{background:#fff !important;color:#17211d !important;height:auto !important;max-height:none !important;overflow:visible !important;width:100% !important}body.ka-dashboard-pdf>header,body.ka-dashboard-pdf>.ka-menu-toggle,body.ka-dashboard-pdf>.ka-menu-overlay,body.ka-dashboard-pdf>.ka-mobile-title,body.ka-dashboard-pdf>.ka-sidebar-footer,body.ka-dashboard-pdf .toolbar,body.ka-dashboard-pdf .tabs,body.ka-dashboard-pdf #pcmAdminBar,body.ka-dashboard-pdf #filtersCard,body.ka-dashboard-pdf .view:not(#view-dashboard),body.ka-dashboard-pdf #saveToast{display:none !important}body.ka-dashboard-pdf>.wrap{margin:0 !important;padding:0 !important}body.ka-dashboard-pdf #view-dashboard{display:block !important;margin:0 !important;padding:0 !important}body.ka-dashboard-pdf #view-dashboard *,body.ka-dashboard-pdf #view-dashboard *::before,body.ka-dashboard-pdf #view-dashboard *::after{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important}body.ka-dashboard-pdf #view-dashboard .cc-dashboard{margin:0 !important;max-width:none !important;padding:0 !important;width:100% !important}body.ka-dashboard-pdf #view-dashboard .cc-command-header,body.ka-dashboard-pdf #view-dashboard .cc-hero-grid,body.ka-dashboard-pdf #view-dashboard .control-kpis,body.ka-dashboard-pdf #view-dashboard .op-ribbon,body.ka-dashboard-pdf #view-dashboard .control-card,body.ka-dashboard-pdf #view-dashboard .cc-details{break-inside:avoid;page-break-inside:avoid}body.ka-dashboard-pdf #view-dashboard .cc-hero-grid{grid-template-columns:1.55fr .8fr 1.15fr !important}body.ka-dashboard-pdf #view-dashboard .cc-performance-grid{grid-template-columns:1.7fr 1fr !important}body.ka-dashboard-pdf #view-dashboard .cc-control-grid{grid-template-columns:repeat(3,minmax(0,1fr)) !important}body.ka-dashboard-pdf #view-dashboard .cc-management-grid{grid-template-columns:1.25fr 1fr !important}body.ka-dashboard-pdf #view-dashboard .cc-section-heading,body.ka-dashboard-pdf #view-dashboard .cc-details{break-before:page;page-break-before:always}body.ka-dashboard-pdf #view-dashboard svg{height:auto !important;max-height:150mm !important;width:100% !important}body.ka-dashboard-pdf #view-dashboard details>*{display:block !important}}</style>
+<style id="ka-dashboard-pdf-style">
+#kaDashboardPdfAppendix{display:none}
+@media print{
+  @page{size:A4 landscape;margin:8mm}
+  body.ka-dashboard-pdf,body.ka-dashboard-pdf .wrap,body.ka-dashboard-pdf #view-dashboard{background:#fff !important;color:#17211d !important;height:auto !important;max-height:none !important;overflow:visible !important;width:100% !important}
+  body.ka-dashboard-pdf>header,body.ka-dashboard-pdf>.ka-menu-toggle,body.ka-dashboard-pdf>.ka-menu-overlay,body.ka-dashboard-pdf>.ka-mobile-title,body.ka-dashboard-pdf>.ka-sidebar-footer,body.ka-dashboard-pdf .toolbar,body.ka-dashboard-pdf .tabs,body.ka-dashboard-pdf #pcmAdminBar,body.ka-dashboard-pdf #filtersCard,body.ka-dashboard-pdf .view:not(#view-dashboard),body.ka-dashboard-pdf #saveToast{display:none !important}
+  body.ka-dashboard-pdf>.wrap{margin:0 !important;padding:0 !important}
+  body.ka-dashboard-pdf #view-dashboard{display:block !important;margin:0 !important;padding:0 !important}
+  body.ka-dashboard-pdf #view-dashboard *,body.ka-dashboard-pdf #view-dashboard *::before,body.ka-dashboard-pdf #view-dashboard *::after{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important}
+  body.ka-dashboard-pdf #view-dashboard .cc-dashboard{margin:0 !important;max-width:none !important;padding:0 !important;width:100% !important}
+  body.ka-dashboard-pdf #view-dashboard .cc-command-header,body.ka-dashboard-pdf #view-dashboard .cc-hero-grid,body.ka-dashboard-pdf #view-dashboard .control-kpis,body.ka-dashboard-pdf #view-dashboard .op-ribbon,body.ka-dashboard-pdf #view-dashboard .control-card,body.ka-dashboard-pdf #view-dashboard .cc-details{break-inside:avoid;page-break-inside:avoid}
+  body.ka-dashboard-pdf #view-dashboard .cc-hero-grid{grid-template-columns:1.55fr .8fr 1.15fr !important}
+  body.ka-dashboard-pdf #view-dashboard .cc-performance-grid{grid-template-columns:1.7fr 1fr !important}
+  body.ka-dashboard-pdf #view-dashboard .cc-control-grid{grid-template-columns:repeat(3,minmax(0,1fr)) !important}
+  body.ka-dashboard-pdf #view-dashboard .cc-management-grid{grid-template-columns:1.25fr 1fr !important}
+  body.ka-dashboard-pdf #view-dashboard .cc-section-heading,body.ka-dashboard-pdf #view-dashboard .cc-details{break-before:page;page-break-before:always}
+  body.ka-dashboard-pdf #view-dashboard svg{height:auto !important;max-height:150mm !important;width:100% !important}
+  body.ka-dashboard-pdf #view-dashboard details>*{display:block !important}
+  body.ka-dashboard-pdf #kaDashboardPdfAppendix{display:block !important;break-before:page;page-break-before:always;margin-top:8mm}
+  body.ka-dashboard-pdf #kaDashboardPdfAppendix .ka-pdf-appendix-header{background:#00693c !important;border-top:4px solid #fdd500;border-radius:3mm;color:#fff !important;margin:0 0 5mm;padding:5mm 7mm}
+  body.ka-dashboard-pdf #kaDashboardPdfAppendix .ka-pdf-appendix-header h2{font-size:18pt;margin:0 0 2mm}
+  body.ka-dashboard-pdf #kaDashboardPdfAppendix .ka-pdf-appendix-header p{font-size:8.5pt;line-height:1.45;margin:0}
+  body.ka-dashboard-pdf #kaDashboardPdfAppendix .report-section{border-top:0;break-before:page;margin:0;padding:0;page-break-before:always}
+  body.ka-dashboard-pdf #kaDashboardPdfAppendix .report-section:first-of-type{break-before:auto;page-break-before:auto}
+  body.ka-dashboard-pdf #kaDashboardPdfAppendix h3{border-left:4px solid #fdd500;color:#00693c;font-size:14pt;margin:0 0 4mm;padding-left:3mm}
+  body.ka-dashboard-pdf #kaDashboardPdfAppendix table{border-collapse:collapse;font-size:8pt;line-height:1.3;table-layout:auto;width:100%}
+  body.ka-dashboard-pdf #kaDashboardPdfAppendix thead{display:table-header-group}
+  body.ka-dashboard-pdf #kaDashboardPdfAppendix tr{break-inside:avoid;page-break-inside:avoid}
+  body.ka-dashboard-pdf #kaDashboardPdfAppendix th,body.ka-dashboard-pdf #kaDashboardPdfAppendix td{border-bottom:1px solid #dfe7e3;overflow-wrap:anywhere;padding:1.8mm 2mm;text-align:left;vertical-align:top;white-space:normal}
+  body.ka-dashboard-pdf #kaDashboardPdfAppendix th{background:#eaf5ef !important;color:#00693c;font-size:7.4pt}
+}
+</style>
 <script id="ka-dashboard-pdf-export">
 (function(){
   'use strict';
@@ -8291,19 +8325,15 @@ setInterval(function(){ try{ updateHeaderTimestamp(); }catch(e){} }, 30000);
 
     var active=document.querySelector('.view.active');
     var previousView=active?active.id.replace('view-',''):'dashboard';
-    var fields=['fDisciplina','fArea','fEquipamento','fStatus'];
-    var previousFilters={};
-    fields.forEach(function(id){
-      var field=document.getElementById(id);
-      if(field){previousFilters[id]=field.value;field.value='';}
-    });
     var details=Array.from(document.querySelectorAll('#view-dashboard details'));
     var previousDetails=details.map(function(item){return item.open;});
     details.forEach(function(item){item.open=true;});
     var previousTitle=document.title;
     var stamp=new Date();
     var fileStamp=stamp.toISOString().slice(0,16).replace(/[:T]/g,'-');
-    document.title='Dashboard_Parada_'+fileStamp;
+    var selectedArea=(document.getElementById('fArea')||{}).value||'Geral';
+    var safeArea=String(selectedArea).trim().replace(/[^a-z0-9_-]+/gi,'_').replace(/^_+|_+$/g,'')||'Geral';
+    document.title='Dashboard_Parada_'+safeArea+'_'+fileStamp;
     document.body.classList.add('ka-dashboard-pdf');
 
     var dashboardButton=Array.from(document.querySelectorAll('.tabs .tab')).find(function(button){
@@ -8312,16 +8342,52 @@ setInterval(function(){ try{ updateHeaderTimestamp(); }catch(e){} }, 30000);
     if(typeof window.showTab==='function') window.showTab('dashboard',dashboardButton||null);
     if(typeof window.renderAll==='function') window.renderAll();
 
+    if(typeof window.renderReport==='function') window.renderReport();
+    var oldAppendix=document.getElementById('kaDashboardPdfAppendix');
+    if(oldAppendix) oldAppendix.remove();
+    var report=document.getElementById('reportContent');
+    var reportSections=report?Array.from(report.querySelectorAll('.report-section')):[];
+    var findSection=function(text){
+      return reportSections.find(function(section){
+        var heading=section.querySelector('h3');
+        return heading && heading.textContent.indexOf(text)>=0;
+      });
+    };
+    var appendix=document.createElement('section');
+    appendix.id='kaDashboardPdfAppendix';
+    var filterParts=[];
+    [
+      ['fDisciplina','Disciplina'],['fArea','Área'],['fEquipamento','Equipamento'],
+      ['fOM','OM'],['fStatus','Status']
+    ].forEach(function(item){
+      var field=document.getElementById(item[0]);
+      var value=field?String(field.value||'').trim():'';
+      if(!value) return;
+      var shown=value;
+      if(field.tagName==='SELECT' && field.selectedIndex>=0) shown=String(field.options[field.selectedIndex].textContent||value).trim();
+      filterParts.push(item[1]+': '+shown);
+    });
+    var safeText=function(text){return typeof escapeHtml==='function'?escapeHtml(text):text;};
+    var reference=document.getElementById('refTime');
+    var referenceText=reference&&reference.value?(typeof formatDateLong==='function'?formatDateLong(reference.value):reference.value):new Date().toLocaleString('pt-BR');
+    appendix.innerHTML='<div class="ka-pdf-appendix-header"><h2>Acompanhamento gerencial da parada</h2><p><strong>Escopo:</strong> '+
+      (filterParts.length?filterParts.map(safeText).join(' · '):'Visão geral, sem filtros')+
+      '<br><strong>Hora de referência:</strong> '+safeText(referenceText)+
+      ' · <strong>Emitido em:</strong> '+safeText(new Date().toLocaleString('pt-BR'))+'</p></div>';
+    [findSection('Resumo por disciplina'),findSection('Atividades atrasadas')].forEach(function(section){
+      if(section) appendix.appendChild(section.cloneNode(true));
+    });
+    var dashboard=document.querySelector('#view-dashboard .cc-dashboard')||document.getElementById('view-dashboard');
+    if(dashboard) dashboard.appendChild(appendix);
+
     var restored=false;
     function restore(){
       if(restored) return;
       restored=true;
       document.body.classList.remove('ka-dashboard-pdf');
       document.title=previousTitle;
-      fields.forEach(function(id){
-        var field=document.getElementById(id);
-        if(field&&Object.prototype.hasOwnProperty.call(previousFilters,id)) field.value=previousFilters[id];
-      });
+      var appendix=document.getElementById('kaDashboardPdfAppendix');
+      if(appendix) appendix.remove();
       details.forEach(function(item,index){item.open=previousDetails[index];});
       var previousButton=Array.from(document.querySelectorAll('.tabs .tab')).find(function(button){
         return (button.getAttribute('onclick')||'').indexOf("showTab('"+previousView+"'")>=0;
