@@ -8406,6 +8406,147 @@ setInterval(function(){ try{ updateHeaderTimestamp(); }catch(e){} }, 30000);
 </script>
 
 
+<!-- Executive PDF: a read-only snapshot, independent of screen layout. -->
+<style id="ka-executive-pdf-style">
+#kaExecutivePdf{display:none}
+@media print{
+  @page{size:A4 landscape;margin:9mm}
+  html body.ka-dashboard-pdf{display:block!important;margin:0!important;padding:0!important;background:white!important}
+  html body.ka-dashboard-pdf>*:not(#kaExecutivePdf){display:none!important}
+  html body.ka-dashboard-pdf>#kaExecutivePdf{display:block!important;width:100%!important;margin:0!important;padding:0!important;color:#20352f!important;background:white!important;font:9pt/1.32 Arial,Helvetica,sans-serif!important}
+  #kaExecutivePdf,#kaExecutivePdf *{box-sizing:border-box;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;animation:none!important;box-shadow:none!important}
+  #kaExecutivePdf h1{font-size:21pt;line-height:1.1;margin:1mm 0 2mm;color:#07573f}
+  #kaExecutivePdf h2{font-size:12pt;margin:4mm 0 2mm;padding:0 0 1.5mm;border-bottom:1px solid #bcd6cb;break-after:avoid;color:#07573f}
+  #kaExecutivePdf h3{font-size:10pt;margin:0 0 2mm;color:#07573f;break-after:avoid}
+  #kaExecutivePdf p{margin:1mm 0}
+  #kaExecutivePdf .pdf-head{display:flex;justify-content:space-between;gap:8mm;border-bottom:2mm solid #087a52;padding-bottom:3mm;margin-bottom:3mm;break-inside:avoid}
+  #kaExecutivePdf .pdf-brand{font-size:8pt;letter-spacing:1.2px;font-weight:bold;color:#557266}
+  #kaExecutivePdf .pdf-meta{font-size:8pt;max-width:80mm;text-align:right;align-self:center}
+  #kaExecutivePdf .pdf-scope{font-size:9pt;font-weight:bold}
+  #kaExecutivePdf .pdf-kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:2.5mm;break-inside:avoid;margin:0 0 3mm}
+  #kaExecutivePdf .pdf-kpi{background:#f0f6f3;border:1px solid #d9e7df;border-top:1mm solid #008542;border-radius:2mm;padding:2.5mm}
+  #kaExecutivePdf .pdf-kpi b{display:block;font-size:22pt;line-height:1.15;color:#065c40}
+  #kaExecutivePdf .pdf-kpi span{display:block;font-size:8pt;color:#51665d}
+  #kaExecutivePdf .pdf-kpi small{font-size:7.5pt;color:#52685e}
+  #kaExecutivePdf .pdf-kpi.bad{border-top-color:#bd3f30}
+  #kaExecutivePdf .pdf-kpi.bad b{color:#ac362a}
+  #kaExecutivePdf .pdf-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:3mm;margin-bottom:3mm;padding:2mm 3mm;background:#f7f9f8;border:1px solid #dce6e0;border-radius:2mm;break-inside:avoid}
+  #kaExecutivePdf .pdf-summary span{font-size:8pt;display:block;color:#52685e}
+  #kaExecutivePdf .pdf-summary strong{font-size:10pt}
+  #kaExecutivePdf .pdf-curves{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:3mm;align-items:start;margin:0 0 3mm;break-inside:avoid}
+  #kaExecutivePdf .pdf-box{border:1px solid #d9e5df;border-radius:2mm;padding:3mm;min-width:0;break-inside:avoid}
+  #kaExecutivePdf .pdf-chart svg{display:block;width:100%!important;height:52mm!important;max-height:none!important;overflow:visible}
+  #kaExecutivePdf .pdf-chart-note{font-size:8pt;color:#5e7168;margin:0 0 1mm}
+  #kaExecutivePdf .pdf-areas{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:3mm;margin:0 0 3mm}
+  #kaExecutivePdf .pdf-area{break-inside:avoid;border:1px solid #d9e5df;border-radius:2mm;padding:3mm;min-width:0}
+  #kaExecutivePdf .pdf-area-head{display:flex;justify-content:space-between;gap:2mm;align-items:start;margin-bottom:1mm}
+  #kaExecutivePdf .pdf-area-head strong{font-size:11pt;color:#07573f}
+  #kaExecutivePdf .pdf-area-head span{font-size:8pt;text-transform:uppercase;color:#a03d2d;font-weight:bold}
+  #kaExecutivePdf .pdf-area-head span.good{color:#087348}
+  #kaExecutivePdf .pdf-area-head span.warn{color:#8a6500}
+  #kaExecutivePdf .pdf-area-value{display:flex;justify-content:space-between;align-items:center;gap:3mm}
+  #kaExecutivePdf .pdf-area-value b{font-size:19pt;color:#145c71}
+  #kaExecutivePdf .pdf-area-value small{font-size:8pt}
+  #kaExecutivePdf .pdf-area svg{display:block;width:100%!important;height:32mm!important;max-height:none!important}
+  #kaExecutivePdf .pdf-legend{font-size:7.5pt;color:#566b62;text-align:right}
+  #kaExecutivePdf .pdf-legend i{display:inline-block;width:6mm;border-top:2px solid #53616b;vertical-align:middle;margin-left:2mm}
+  #kaExecutivePdf .pdf-legend .real{border-color:#145c71}
+  #kaExecutivePdf .pdf-legend .proj{border-color:#d5a500;border-top-style:dashed}
+  #kaExecutivePdf .pdf-stats{display:flex;gap:3mm;flex-wrap:wrap;margin:1.5mm 0;font-size:8pt}
+  #kaExecutivePdf .pdf-stats span{background:#eef5f1;padding:1mm 2mm;border-radius:1mm}
+  #kaExecutivePdf .pdf-area-foot{font-size:8pt;border-top:1px solid #e1e9e4;padding-top:1.5mm}
+  #kaExecutivePdf .pdf-attention{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:3mm;margin-bottom:3mm;align-items:start}
+  #kaExecutivePdf .pdf-attention .pdf-box{padding:2.5mm;break-inside:avoid}
+  #kaExecutivePdf .pdf-attention .pdf-stats{gap:1mm;font-size:7.2pt}
+  #kaExecutivePdf .pdf-attention .pdf-stats span{padding:.7mm 1mm}
+  #kaExecutivePdf .pdf-item{font-size:8pt;border-top:1px solid #e1e9e4;padding:1.5mm 0;break-inside:avoid;overflow-wrap:anywhere}
+  #kaExecutivePdf .pdf-item strong{display:block;color:#304c40}
+  #kaExecutivePdf .pdf-item small{font-size:7.5pt;color:#607367}
+  #kaExecutivePdf .pdf-muted{color:#607367;font-size:8pt}
+  #kaExecutivePdf .pdf-management{margin-bottom:3mm}
+  #kaExecutivePdf .pdf-table-section{margin:3mm 0;break-before:auto;break-inside:auto}
+  #kaExecutivePdf table{width:100%;table-layout:fixed;border-collapse:collapse;font-size:8.3pt;line-height:1.3;margin:0}
+  #kaExecutivePdf thead{display:table-header-group}
+  #kaExecutivePdf tr{break-inside:avoid;page-break-inside:avoid}
+  #kaExecutivePdf th,#kaExecutivePdf td{position:static!important;white-space:normal!important;overflow-wrap:anywhere;border-bottom:1px solid #dce6e0;padding:1mm 1.8mm!important;vertical-align:top;letter-spacing:normal}
+  #kaExecutivePdf th{background:#e8f2ed!important;color:#07573f;font-size:7.5pt;text-transform:none!important}
+  #kaExecutivePdf tbody tr:nth-child(even){background:#f7f9f8}
+  #kaExecutivePdf .pdf-discipline th:first-child{width:32%}
+  #kaExecutivePdf .pdf-delayed th:nth-child(1){width:5%}
+  #kaExecutivePdf .pdf-delayed th:nth-child(2){width:11%}
+  #kaExecutivePdf .pdf-delayed th:nth-child(3){width:16%}
+  #kaExecutivePdf .pdf-delayed th:nth-child(4){width:25%}
+  #kaExecutivePdf .pdf-delayed th:nth-child(5){width:8%}
+  #kaExecutivePdf .pdf-delayed th:nth-child(6){width:6%}
+  #kaExecutivePdf .pdf-delayed th:nth-child(7){width:6%}
+  #kaExecutivePdf .pdf-delayed th:nth-child(8){width:12%}
+  #kaExecutivePdf .pdf-delayed th:nth-child(9){width:11%}
+  #kaExecutivePdf .pdf-plan th:first-child{width:55%}
+  #kaExecutivePdf .pdf-note{font-size:7.5pt;color:#607367;margin-top:3mm;padding-top:2mm;border-top:1px solid #dce6e0}
+}
+</style>
+<script id="ka-executive-pdf-export">
+(function(){
+  'use strict';
+  function text(node,selector){var el=selector&&node?node.querySelector(selector):node;return el?el.textContent.trim():'';}
+  function el(tag,cls,value){var node=document.createElement(tag);if(cls)node.className=cls;if(value!==undefined)node.textContent=value;return node;}
+  function svgFrom(source){
+    var svg=source&&source.querySelector('svg');if(!svg)return el('p','pdf-muted','Sem dados para a curva neste filtro.');
+    var copy=svg.cloneNode(true);copy.removeAttribute('style');copy.setAttribute('preserveAspectRatio','xMidYMid meet');return copy;
+  }
+  function stats(source){var wrap=el('div','pdf-stats');if(source)source.querySelectorAll('.mini-light,.mgmt-area-metric').forEach(function(item){wrap.appendChild(el('span','',text(item,'.n,b')+' '+text(item,'.l,span')));});return wrap;}
+  function areaCard(source){
+    var card=el('section','pdf-area'),head=el('div','pdf-area-head');
+    head.appendChild(el('strong','',text(source,'.mgmt-area-name')));var state=source.querySelector('.mgmt-area-status');head.appendChild(el('span',state&&state.classList.contains('good')?'good':state&&state.classList.contains('warn')?'warn':'bad',text(state)));card.appendChild(head);
+    card.appendChild(el('div','pdf-muted',text(source,'.mgmt-area-sub')));
+    var value=el('div','pdf-area-value');value.appendChild(el('b','',text(source,'.mgmt-area-progress strong')));value.appendChild(el('small','',text(source,'.mgmt-area-progress span')));card.appendChild(value);
+    var legend=el('div','pdf-legend');legend.innerHTML='<i></i> Planejado <i class="real"></i> Executado <i class="proj"></i> Projetado';card.appendChild(legend);
+    card.appendChild(svgFrom(source));card.appendChild(stats(source));card.appendChild(el('div','pdf-area-foot',text(source,'.mgmt-area-footer')));return card;
+  }
+  function snapshot(){
+    var root=el('main');root.id='kaExecutivePdf';
+    var filters=[];[['fDisciplina','Disciplina'],['fArea','Área'],['fEquipamento','Equipamento'],['fOM','OM'],['fStatus','Status']].forEach(function(pair){var field=document.getElementById(pair[0]);if(field&&field.value.trim())filters.push(pair[1]+': '+(field.tagName==='SELECT'?field.options[field.selectedIndex].textContent:field.value));});
+    var header=el('div','pdf-head'),title=el('div');title.appendChild(el('div','pdf-brand','K.A | GESTÃO DE PARADAS'));title.appendChild(el('h1','','Acompanhamento gerencial'));title.appendChild(el('div','pdf-scope',filters.join(' · ')||'Visão geral · Todas as áreas'));header.appendChild(title);
+    var meta=el('div','pdf-meta'),ref=document.getElementById('refTime');meta.appendChild(el('p','','Referência: '+(ref&&ref.value?new Date(ref.value).toLocaleString('pt-BR'):new Date().toLocaleString('pt-BR'))));meta.appendChild(el('p','','Emissão: '+new Date().toLocaleString('pt-BR')));header.appendChild(meta);root.appendChild(header);
+    var kpis=el('div','pdf-kpis');document.querySelectorAll('#controlKpis .control-kpi').forEach(function(item){var card=el('div','pdf-kpi'+(item.classList.contains('bad')?' bad':''));card.appendChild(el('span','',text(item,'.kpi-lbl')));card.appendChild(el('b','',text(item,'.kpi-val')));card.appendChild(el('small','',text(item,'.kpi-note')));kpis.appendChild(card);});root.appendChild(kpis);
+    var summary=el('div','pdf-summary');document.querySelectorAll('#controlProjectionHero .cc-proj-chip').forEach(function(item){var part=el('div');part.appendChild(el('span','',text(item,'span')));part.appendChild(el('strong','',text(item,'strong')));summary.appendChild(part);});root.appendChild(summary);
+    var curves=el('div','pdf-curves'),curve=el('section','pdf-box pdf-chart');curve.appendChild(el('h3','','Curva S · Escopo selecionado'));curve.appendChild(el('div','pdf-chart-note',text(document.getElementById('heatmapMeta'))));curve.appendChild(svgFrom(document.getElementById('controlHeatmap')));curves.appendChild(curve);
+    var areas=Array.from(document.querySelectorAll('#mgmtAreaSummaryGrid .mgmt-area-tile')).filter(function(card){return !!card.querySelector('svg');});
+    if(areas.length===1){curves.appendChild(areaCard(areas[0]));}else{
+      var reading=el('section','pdf-box');reading.appendChild(el('h3','','Leitura executiva'));reading.appendChild(el('p','',text(document.getElementById('controlStatus'))));reading.appendChild(el('p','',text(document.getElementById('ccShiftHeadline'))));reading.appendChild(stats(document.getElementById('controlAllActivities')));var adherence=text(document.querySelector('#adherenceDashboard .adherence-number'));if(adherence)reading.appendChild(el('p','','Aderência ao planejado: '+adherence));curves.appendChild(reading);
+    }
+    root.appendChild(curves);
+    if(areas.length>1){root.appendChild(el('h2','','Performance por área · Curvas S'));var grid=el('div','pdf-areas');areas.forEach(function(area){grid.appendChild(areaCard(area));});root.appendChild(grid);}
+    root.appendChild(el('h2','','Pontos de atenção'));var attention=el('div','pdf-attention');
+    [['controlCritPath','Caminho crítico'],['dashExtraScope','Extra escopo'],['controlImped','Impeditivas']].forEach(function(pair){var source=document.getElementById(pair[0]),box=el('section','pdf-box');box.appendChild(el('h3','',pair[1]));box.appendChild(stats(source));var items=source?Array.from(source.querySelectorAll('.ctrl-item')):[];items.forEach(function(item){var row=el('div','pdf-item');var desc=text(item,'.ctrl-desc');row.appendChild(el('strong','',text(item,'.ctrl-head')||text(item,'.ctrl-tagchip')));row.appendChild(el('div','',desc||text(item)));row.appendChild(el('small','',text(item,'.ctrl-meta')));box.appendChild(row);});if(!items.length)box.appendChild(el('p','pdf-muted',text(source,'.hint')||'Sem apontamentos neste filtro.'));attention.appendChild(box);});root.appendChild(attention);
+    root.appendChild(el('h2','','Gestão e acompanhamento'));var management=el('section','pdf-management');management.appendChild(stats(document.getElementById('controlAllActivities')));management.appendChild(el('h3','','Plano de ação da reunião'));management.appendChild(el('p','pdf-muted',text(document.getElementById('dashPlanMeta'))));
+    var plans=Array.from(document.querySelectorAll('#dashPlanContent .plan-mini-item'));
+    if(plans.length){var table=el('table','pdf-plan');table.innerHTML='<thead><tr><th>Ação / acompanhamento</th><th>Responsável</th><th>Prazo</th><th>Status</th></tr></thead>';var tbody=el('tbody');plans.forEach(function(plan){var row=el('tr'),cells=plan.querySelectorAll('.plan-cell');var values=[text(plan,'.plan-body'),cells[0]?text(cells[0]).replace(/^Responsável/,'').trim():'',cells[1]?text(cells[1]).replace(/^Prazo/,'').trim():'',text(plan,'.plan-status')];values.forEach(function(value){row.appendChild(el('td','',value));});tbody.appendChild(row);});table.appendChild(tbody);management.appendChild(table);}else management.appendChild(el('p','pdf-muted','Nenhuma ação pendente registrada.'));
+    root.appendChild(management);
+    var sections=Array.from(document.querySelectorAll('#reportContent .report-section'));
+    [['Resumo por disciplina','pdf-discipline'],['Atividades atrasadas','pdf-delayed']].forEach(function(pair){var source=sections.find(function(section){return text(section,'h3').includes(pair[0]);});if(!source)return;var section=el('section','pdf-table-section '+pair[1]);section.appendChild(el('h2','',text(source,'h3').replace(/^\d+\.\s*/,'')));var table=source.querySelector('table');if(table){var copy=table.cloneNode(true);copy.querySelectorAll('[style]').forEach(function(item){item.removeAttribute('style');});section.appendChild(copy);}else section.appendChild(el('p','pdf-muted',text(source,'p')||'Sem registros neste filtro.'));root.appendChild(section);});
+    root.querySelectorAll('.pdf-delayed th').forEach(function(th){if(th.textContent.trim()==='Progresso')th.textContent='Avanço';});
+    var planTitle=management.querySelector('h3');if(planTitle)planTitle.textContent='Plano de ação da reunião · Acompanhamento geral';
+    return root;
+  }
+  window.generateDashboardPdf=function(){
+    if(!document.body.classList.contains('admin-mode')){alert('Entre como administrador para gerar o PDF do Dashboard.');return;}
+    if(document.body.classList.contains('ka-dashboard-pdf'))return;
+    var title=document.title,root,restored=false;
+    function restore(){if(restored)return;restored=true;document.body.classList.remove('ka-dashboard-pdf');document.title=title;if(root)root.remove();window.removeEventListener('afterprint',restore);}
+    try{
+      // Render only from the current in-memory base. No refresh, save or Firebase call.
+      if(typeof window.renderAll==='function')window.renderAll();
+      if(typeof window.renderReport==='function')window.renderReport();
+      root=snapshot();document.body.appendChild(root);document.body.classList.add('ka-dashboard-pdf');
+      document.title='KA-Relatorio-Gerencial-'+((document.getElementById('fArea')||{}).value||'Geral').replace(/[^a-z0-9_-]/gi,'_');
+      window.addEventListener('afterprint',restore);
+      window.setTimeout(function(){try{window.print();}catch(error){restore();alert('Não foi possível abrir a impressão.');}},200);
+    }catch(error){restore();console.error('K.A PDF:',error);alert('Não foi possível preparar o PDF. Nenhum dado foi alterado.');}
+  };
+})();
+</script>
+
 <!-- ===== K.A V2 safe architecture layer (inline / standalone) ===== -->
 <script id="ka-v2-auth">
 (function(){
