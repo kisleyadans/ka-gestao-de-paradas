@@ -1,5 +1,6 @@
 import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { spawnSync } from "node:child_process";
 
 const root = process.cwd();
 const firebaseOutput = path.join(root, "firebase", "public");
@@ -26,6 +27,15 @@ await Promise.all([
   writeFile(indexPath, html, "utf8"),
   writeFile(path.join(pagesOutput, ".nojekyll"), "", "utf8"),
 ]);
+
+// Publish CEII below the existing GitHub Pages address. Its Firebase and
+// application cache remain separate from the original page at the root.
+const clientBuild = spawnSync(process.execPath, [
+  path.join(root, "work", "build-client-site.mjs"), "--client=ceii",
+], { cwd: root, stdio: "inherit" });
+if (clientBuild.error) throw clientBuild.error;
+if (clientBuild.status !== 0) throw new Error("Falha ao gerar a página CEII para o GitHub Pages.");
+await cp(path.join(root, "dist", "clients", "ceii"), path.join(pagesOutput, "ceii"), { recursive: true });
 
 console.log(pagesOutput);
 console.log(`bytes=${Buffer.byteLength(html, "utf8")}`);
