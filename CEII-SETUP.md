@@ -11,12 +11,14 @@ do cliente original para o CEII.
 - Perfil: `clients/ceii.json`.
 - Site gerado: `dist/clients/ceii`.
 - Configuração de publicação: `firebase.ceii.json`.
-- Endereço publicado: `https://ka-gestao-paradas-ceii.web.app`.
+- Endereço principal: `https://kisleyadans.github.io/ka-gestao-de-paradas/ceii/`.
+- Endereço alternativo no Firebase Hosting: `https://ka-gestao-paradas-ceii.web.app`.
 
 Projeto, app Web, Cloud Firestore e Firebase Authentication foram configurados
 em 16/10/2026. O Firestore usa a região `southamerica-east1` (São Paulo), no nível
-gratuito. A conta administrativa CEII foi criada com senha exclusiva entregue
-separadamente; nenhuma senha faz parte destes arquivos.
+gratuito. A conta administrativa e as 16 contas técnicas de disciplina foram
+copiadas do projeto original preservando as senhas, conforme solicitado. A cópia
+usa os hashes de senha do Firebase; nenhuma senha faz parte destes arquivos.
 
 ## Criar o Firebase separado
 
@@ -26,7 +28,7 @@ separadamente; nenhuma senha faz parte destes arquivos.
 2. Cadastre um app Web e copie somente sua configuração pública.
 3. Crie o Cloud Firestore em modo de produção e defina a região apropriada para a operação.
 4. Ative Email/Senha no Firebase Authentication. Crie a conta
-   `operador@ka-paradas.app` com senha exclusiva do CEII e as contas de disciplina
+   `operador@ka-paradas.app` e as contas de disciplina
    necessárias, seguindo os e-mails de `FIREBASE-SETUP.md`. Essas contas pertencem
    somente ao projeto CEII. Não publique senhas ou contas de serviço no GitHub.
 5. Autorize `ka-gestao-paradas-ceii.web.app` no Authentication, se necessário.
@@ -46,7 +48,9 @@ npx firebase-tools@15.24.0 deploy --project ka-gestao-paradas-ceii --config fire
 
 O comando de publicação precisa da sessão autenticada na conta responsável.
 Nunca use `firebase use` para trocar o projeto padrão da publicação original.
-Nenhum workflow existente foi alterado para publicar no CEII automaticamente.
+O build do GitHub Pages inclui a página original na raiz e o CEII na subpasta
+`ceii/`. O workflow existente publica as duas páginas quando `main` é atualizado.
+O Firebase CEII autoriza o domínio `kisleyadans.github.io` para autenticação.
 
 As regras reutilizam o modelo atual: consulta pública por link e gravação com
 autenticação. O projeto separado mantém contas e dados independentes; o link não
@@ -58,7 +62,7 @@ substitui uma regra de leitura autenticada caso o cliente exija consulta privada
 - Abrir a página em computador e celular, conferir nome CEII e banco inicialmente vazio.
 - Fazer login com a conta CEII, importar uma base autorizada para esse cliente,
   editar uma atividade e confirmar o resultado em outro navegador.
-- Confirmar que uma conta/senha exclusiva do projeto original não autentica no CEII.
+- Confirmar que as mesmas senhas do projeto original autenticam no CEII.
 - Conferir que a página original mantém seus dados e acesso.
 
 As chaves locais de cache, atividades e sessões da página CEII recebem o prefixo
