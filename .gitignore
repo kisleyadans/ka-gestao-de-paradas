@@ -44,6 +44,8 @@ next-env.d.ts
 /work/*
 !/work/build-firebase-site.mjs
 !/work/build-github-pages.mjs
+!/work/build-client-site.mjs
+!/work/client-site-config.mjs
 !/work/sanitize-operational-source.py
 !/work/build-offline-html.mjs
 !/work/offline-shell.js

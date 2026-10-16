@@ -1,0 +1,13 @@
+{
+  "id": "ceii",
+  "name": "KA Gestão de Paradas CEII",
+  "firebaseProjectId": "ka-gestao-paradas-ceii",
+  "firebase": {
+    "projectId": "ka-gestao-paradas-ceii",
+    "appId": "1:995275416832:web:13dc0574836c48484abfe5",
+    "apiKey": "AIzaSyCwPsaFhf8gtOqLB1DoNSp61r_SZEIhaPQ",
+    "authDomain": "ka-gestao-paradas-ceii.firebaseapp.com",
+    "storageBucket": "ka-gestao-paradas-ceii.firebasestorage.app",
+    "messagingSenderId": "995275416832"
+  }
+}
